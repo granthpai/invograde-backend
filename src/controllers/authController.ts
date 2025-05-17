@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import User, { IUser } from '../models/user';
 import VerificationCode from '../models/verificationCode';
-import { sendVerificationEmail } from '../config/email';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../config/email';
 import { sendVerificationSMS } from '../config/sms';
 import { generateNumCode } from '../utils/generateVerificationCode';
 
@@ -241,11 +241,7 @@ class AuthController {
       user.resetPasswordExpires = new Date(Date.now() + 3600000);
       await user.save();
 
-      await sendEmail({
-        to: email,
-        subject: 'Reset your Invograde password',
-        html: `Please click the link to reset your password: <a href="${process.env.FRONTEND_URL}/reset-password/${resetToken}">Reset Password</a>`,
-      });
+      await sendPasswordResetEmail(email, resetToken);
 
       res.status(200).json({ success: true, message: 'Password reset instructions sent to your email' });
     } catch (error) {
