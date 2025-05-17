@@ -14,16 +14,31 @@ export interface IResume extends Document {
     education: IEducation[];
     workExperience: IWorkExperience[];
     certifications: ICertification[];
-  }
-  
-  const ResumeSchema: Schema = new Schema({
+    summary?: string;
+    projects?: any[];
+    languages?: string[];
+    interests?: string[];
+}
+
+const ResumeSchema: Schema = new Schema({
     userId: { type: String, required: true, unique: true },
     skills: [SkillSchema],
     education: [EducationSchema],
     workExperience: [WorkExperienceSchema],
-    certifications: [CertificationSchema]
-  }, {
+    certifications: [CertificationSchema],
+    summary: { type: String },
+    projects: [{
+        title: { type: String },
+        description: { type: String },
+        technologies: [{ type: String }],
+        startDate: { type: Date },
+        endDate: { type: Date },
+        url: { type: String }
+    }],
+    languages: [{ type: String }],
+    interests: [{ type: String }]
+}, {
     timestamps: true
-  });
-  
+});
+
 export const Resume = mongoose.model<IResume>('Resume', ResumeSchema);

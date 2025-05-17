@@ -1,18 +1,20 @@
 import { Request, Response } from 'express';
 import { Resume } from '../models/resume';
-import { ISkill } from '../models/skill';
-import {IEducation} from '../models/education';
-import {IWorkExperience} from '../models/workExperience';
-import {ICertification} from '../models/certification';
 import mongoose from 'mongoose';
 
 export class ResumeController {
-  async getOrCreateResume(req: Request, res: Response) {
+  async getOrCreateResume(req: Request, res: Response):Promise<void> {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id as string;
 
       if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
+         res.status(401).json({ message: 'Unauthorized' });
+         return;
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        res.status(400).json({ message: 'Invalid user ID' });
+        return;
       }
 
       let resume = await Resume.findOne({ userId });
@@ -22,9 +24,21 @@ export class ResumeController {
         await resume.save();
       }
 
+      const completeResume = {
+        ...resume.toObject(),
+        skills: resume.skills || [],
+        education: resume.education || [],
+        workExperience: resume.workExperience || [],
+        certifications: resume.certifications || [],
+        summary: resume.summary || '',
+        projects: resume.projects || [],
+        languages: resume.languages || [],
+        interests: resume.interests || []
+      };
+
       res.status(200).json({
-        message: 'Resume retrieved successfully',
-        resume
+        message: resume._id ? 'Resume retrieved successfully' : 'New resume created successfully',
+        resume: completeResume
       });
     } catch (error) {
       console.error('Error retrieving/creating resume:', error);
@@ -35,24 +49,50 @@ export class ResumeController {
     }
   }
 
-  async addSkills(req: Request, res: Response) {
+  async addSkills(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.id;
-      const skills: ISkill[] = req.body.skills;
+      const userId = req.user?.id as string;
+      const skills = req.body.skills;
 
       if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+
+      if (!skills || !Array.isArray(skills)) {
+        res.status(400).json({ message: 'Skills must be an array' });
+        return;
+      }
+
+      if (!skills.every(skill => typeof skill === 'object' && 
+        'name' in skill && typeof skill.name === 'string')) {
+        res.status(400).json({ 
+          message: 'Invalid skill format. Each skill must be an object with a name property' 
+        });
+        return;
+      }
+
+      const existingResume = await Resume.findOne({ userId });
+      if (!existingResume) {
+        res.status(404).json({ message: 'Resume not found' });
+        return;
       }
 
       const resume = await Resume.findOneAndUpdate(
         { userId },
         { $set: { skills } },
-        { new: true, upsert: true }
+        { new: true, runValidators: true }
       );
+
+      if (!resume) {
+        res.status(404).json({ message: 'Failed to update resume' });
+        return;
+      }
 
       res.status(200).json({
         message: 'Skills added successfully',
-        skills: resume.skills
+        skills: resume.skills,
+        resumeId: resume._id
       });
     } catch (error) {
       console.error('Error adding skills:', error);
@@ -63,24 +103,51 @@ export class ResumeController {
     }
   }
 
-  async addEducation(req: Request, res: Response) {
+  async addEducation(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.id;
-      const education: IEducation = req.body.education;
+      const userId = req.user?.id as string;
+      const education = req.body.education;
 
       if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+
+      if (!education || typeof education !== 'object') {
+        res.status(400).json({ message: 'Invalid education data' });
+        return;
+      }
+      const requiredFields = ['institution', 'degree', 'startDate'];
+      const missingFields = requiredFields.filter(field => !(field in education));
+      if (missingFields.length > 0) {
+        res.status(400).json({ 
+          message: 'Missing required fields',
+          missingFields
+        });
+        return;
+      }
+
+      const existingResume = await Resume.findOne({ userId });
+      if (!existingResume) {
+        res.status(404).json({ message: 'Resume not found' });
+        return;
       }
 
       const resume = await Resume.findOneAndUpdate(
         { userId },
         { $push: { education } },
-        { new: true, upsert: true }
+        { new: true, runValidators: true }
       );
+
+      if (!resume) {
+        res.status(404).json({ message: 'Failed to update resume' });
+        return;
+      }
 
       res.status(200).json({
         message: 'Education added successfully',
-        education: resume.education
+        education: resume.education,
+        resumeId: resume._id
       });
     } catch (error) {
       console.error('Error adding education:', error);
@@ -91,25 +158,52 @@ export class ResumeController {
     }
   }
 
-    // Add Work Experience
-  async addWorkExperience(req: Request, res: Response) {
+    
+  async addWorkExperience(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.id;
-      const workExperience: IWorkExperience = req.body.workExperience;
+      const userId = req.user?.id as string;
+      const workExperience = req.body.workExperience;
 
       if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+
+      if (!workExperience || typeof workExperience !== 'object') {
+        res.status(400).json({ message: 'Invalid work experience data' });
+        return;
+      }
+      const requiredFields = ['company', 'position', 'startDate'];
+      const missingFields = requiredFields.filter(field => !(field in workExperience));
+      if (missingFields.length > 0) {
+        res.status(400).json({ 
+          message: 'Missing required fields',
+          missingFields
+        });
+        return;
+      }
+
+      const existingResume = await Resume.findOne({ userId });
+      if (!existingResume) {
+        res.status(404).json({ message: 'Resume not found' });
+        return;
       }
 
       const resume = await Resume.findOneAndUpdate(
         { userId },
         { $push: { workExperience } },
-        { new: true, upsert: true }
+        { new: true, runValidators: true }
       );
+
+      if (!resume) {
+        res.status(404).json({ message: 'Failed to update resume' });
+        return;
+      }
 
       res.status(200).json({
         message: 'Work experience added successfully',
-        workExperience: resume.workExperience
+        workExperience: resume.workExperience,
+        resumeId: resume._id
       });
     } catch (error) {
       console.error('Error adding work experience:', error);
@@ -120,24 +214,56 @@ export class ResumeController {
     }
   }
 
-  async addCertifications(req: Request, res: Response) {
+  async addCertifications(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.id;
-      const certification: ICertification = req.body.certification;
+      const userId = req.user?.id as string;
+      const certifications = req.body.certifications;
 
       if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+
+      if (!certifications || !Array.isArray(certifications)) {
+        res.status(400).json({ message: 'Certifications must be an array' });
+        return;
+      }
+      const requiredFields = ['name', 'issuingOrganization', 'date'];
+      const invalidCertifications = certifications.filter((cert: any) => {
+        const missingFields = requiredFields.filter(field => !(field in cert));
+        return missingFields.length > 0;
+      });
+
+      if (invalidCertifications.length > 0) {
+        res.status(400).json({ 
+          message: 'Invalid certification format',
+          invalidCertifications
+        });
+        return;
+      }
+
+      
+      const existingResume = await Resume.findOne({ userId });
+      if (!existingResume) {
+        res.status(404).json({ message: 'Resume not found' });
+        return;
       }
 
       const resume = await Resume.findOneAndUpdate(
         { userId },
-        { $push: { certifications: certification } },
-        { new: true, upsert: true }
+        { $set: { certifications } },
+        { new: true, runValidators: true }
       );
 
+      if (!resume) {
+        res.status(404).json({ message: 'Failed to update resume' });
+        return;
+      }
+
       res.status(200).json({
-        message: 'Certification added successfully',
-        certifications: resume.certifications
+        message: 'Certifications added successfully',
+        certifications: resume.certifications,
+        resumeId: resume._id
       });
     } catch (error) {
       console.error('Error adding certification:', error);
@@ -148,14 +274,15 @@ export class ResumeController {
     }
   }
 
-  async updateResumeSection(req: Request, res: Response) {
+  async updateResumeSection(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;
       const { section, id } = req.params;
       const updateData = req.body;
 
       if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
       }
 
       let updateQuery = {};
@@ -195,7 +322,8 @@ export class ResumeController {
           arrayFilters = [{ 'elem._id': new mongoose.Types.ObjectId(id) }];
           break;
         default:
-          return res.status(400).json({ message: 'Invalid section' });
+          res.status(400).json({ message: 'Invalid section' });
+          return;
       }
 
       const resume = await Resume.findOneAndUpdate(
@@ -208,7 +336,8 @@ export class ResumeController {
       );
 
       if (!resume) {
-        return res.status(404).json({ message: 'Resume not found' });
+        res.status(404).json({ message: 'Resume not found' });
+        return;
       }
 
       res.status(200).json({
@@ -224,13 +353,14 @@ export class ResumeController {
     }
   }
 
-  async deleteResumeSection(req: Request, res: Response) {
+  async deleteResumeSection(req: Request, res: Response): Promise<void>    {
     try {
       const userId = req.user?.id;
       const { section, id } = req.params;
 
       if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
       }
 
       let updateQuery = {};
@@ -257,7 +387,8 @@ export class ResumeController {
           };
           break;
         default:
-          return res.status(400).json({ message: 'Invalid section' });
+          res.status(400).json({ message: 'Invalid section' });
+          return;
       }
 
       const resume = await Resume.findOneAndUpdate(
@@ -267,7 +398,8 @@ export class ResumeController {
       );
 
       if (!resume) {
-        return res.status(404).json({ message: 'Resume not found' });
+        res.status(404).json({ message: 'Resume not found' });
+        return;
       }
 
       res.status(200).json({
@@ -283,3 +415,5 @@ export class ResumeController {
     }
   }
 }
+
+export const resumeController = new ResumeController();

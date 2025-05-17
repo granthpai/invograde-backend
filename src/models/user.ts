@@ -1,6 +1,9 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export interface IUser extends Document {
   username: string;
@@ -78,6 +81,7 @@ const UserSchema = new Schema<IUser>(
   }
 );
 
+// Hash password before saving
 UserSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     next();
@@ -87,13 +91,25 @@ UserSchema.pre('save', async function (next) {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
+// Compare entered password with stored hashed password
 UserSchema.methods.matchPassword = async function (enteredPassword: string) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
+
+// Generate JWT token
 UserSchema.methods.getSignedJwtToken = function () {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET as string, {
-    expiresIn: process.env.JWT_EXPIRE,
-  });
+  const secret = process.env.JWT_SECRET;
+  const expiresIn = process.env.JWT_EXPIRE;
+  
+  if (!secret || !expiresIn) {
+    throw new Error('JWT_SECRET and JWT_EXPIRE must be set in environment variables');
+  }
+
+  return jwt.sign(
+    { id: this._id },
+    secret as jwt.Secret,
+    { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] }
+  );
 };
 
 const User = mongoose.model<IUser>('User', UserSchema);
