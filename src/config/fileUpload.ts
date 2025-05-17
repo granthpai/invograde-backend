@@ -4,6 +4,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { ObjectCannedACL } from '@aws-sdk/client-s3';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
@@ -54,7 +55,7 @@ export const uploadToS3 = async (
       Key: fileKey,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: 'public-read'
+      ACL: 'public-read' as ObjectCannedACL
     };
 
     await s3Client.send(new PutObjectCommand(params));

@@ -14,6 +14,7 @@ export interface IProject extends Document {
   thumbnail?: string;
   isPublic?: boolean;
   likes?: number;
+  likesBy?: string[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -52,7 +53,11 @@ const ProjectSchema: Schema = new Schema({
   likes: { 
     type: Number, 
     default: 0 
-  }
+  },
+  likesBy: [{
+    type: String,
+    ref: 'User'
+  }]
 }, {
   timestamps: true
 });
