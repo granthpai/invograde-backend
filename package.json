@@ -2,11 +2,9 @@
   "name": "invograde-backend",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
-  "build": "tsc -b",
-  "start": "node dist/index.js",
-  "dev": "tsc -b --watch & nodemon dist/index.js"
+    "dev": "tsc -b & node dist/server.js"
   },
   "keywords": [],
   "author": "",
