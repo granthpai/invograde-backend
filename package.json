@@ -4,9 +4,7 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "build": "tsc -b",
-    "start": "node dist/server.js",
-    "dev": "tsc -b --watch & nodemon dist/server.js"
+    "dev": "tsc -b & node dist/server.js"
   },
   "keywords": [],
   "author": "",
