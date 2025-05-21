@@ -1,29 +1,33 @@
-import { Request, Response } from 'express';
-import { validationResult } from 'express-validator';
-import User, { IUser } from '../models/user';
-import VerificationCode from '../models/verificationCode';
-import { sendVerificationEmail, sendPasswordResetEmail } from '../config/email';
-import { sendVerificationSMS } from '../config/sms';
-import { generateNumCode } from '../utils/generateVerificationCode';
+import { Request, Response } from "express";
+import { validationResult } from "express-validator";
+import User, { IUser } from "../models/user";
+import VerificationCode from "../models/verificationCode";
+import { sendVerificationEmail, sendPasswordResetEmail } from "../config/email";
+import { sendVerificationSMS } from "../config/sms";
+import { generateNumCode } from "../utils/generateVerificationCode";
 
 class AuthController {
   async checkExists(req: Request, res: Response): Promise<void> {
     try {
       const { emailOrPhone } = req.body;
-      const isEmail = emailOrPhone.includes('@');
-      const query = isEmail ? { email: emailOrPhone } : { phoneNumber: emailOrPhone };
+      const isEmail = emailOrPhone.includes("@");
+      const query = isEmail
+        ? { email: emailOrPhone }
+        : { phoneNumber: emailOrPhone };
 
       const user = await User.findOne(query);
 
       res.status(200).json({
         success: true,
         exists: !user,
-        message: user ? 'User already exists. Please log in.' : 'User does not exist. Please continue with registration.',
+        message: user
+          ? "User already exists. Please log in."
+          : "User does not exist. Please continue with registration.",
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Server error',
+        message: "Server error",
         error: (error as Error).message,
       });
     }
@@ -37,32 +41,46 @@ class AuthController {
     }
 
     try {
-      const { emailOrPhone, password } = req.body;
-      const isEmail = emailOrPhone.includes('@');
+      const { emailOrPhone, password, username, career } = req.body;
+      const isEmail = emailOrPhone.includes("@");
       let user;
 
       if (isEmail) {
         const existingUser = await User.findOne({ email: emailOrPhone });
         if (existingUser) {
-          res.status(400).json({ success: false, message: 'User already exists with this email' });
+          res.status(400).json({
+            success: false,
+            message: "User already exists with this email",
+          });
           return;
         }
 
+        console.log("creating user");
         user = await User.create({
           email: emailOrPhone,
           password,
           isEmailVerified: false,
           isPhoneVerified: false,
-          careerType: 'Developer',
+          careerType: career,
+          username,
         });
 
+        console.log("user", user);
+
         const verificationCode = generateNumCode();
-        await VerificationCode.create({ user: user._id, code: verificationCode, type: 'email' });
+        await VerificationCode.create({
+          user: user._id,
+          code: verificationCode,
+          type: "email",
+        });
         await sendVerificationEmail(emailOrPhone, verificationCode);
       } else {
         const existingUser = await User.findOne({ phoneNumber: emailOrPhone });
         if (existingUser) {
-          res.status(400).json({ success: false, message: 'User already exists with this phone number' });
+          res.status(400).json({
+            success: false,
+            message: "User already exists with this phone number",
+          });
           return;
         }
 
@@ -71,56 +89,83 @@ class AuthController {
           password,
           isEmailVerified: false,
           isPhoneVerified: false,
-          careerType: 'Developer',
+          careerType: career,
         });
 
         const verificationCode = generateNumCode();
-        await VerificationCode.create({ user: user._id, code: verificationCode, type: 'phone' });
+        await VerificationCode.create({
+          user: user._id,
+          code: verificationCode,
+          type: "phone",
+        });
         await sendVerificationSMS(emailOrPhone, verificationCode);
       }
 
       res.status(201).json({
         success: true,
         userId: user._id,
-        verificationType: isEmail ? 'email' : 'phone',
-        message: `Verification code sent to your ${isEmail ? 'email' : 'phone'}`,
+        verificationType: isEmail ? "email" : "phone",
+        message: `Verification code sent to your ${
+          isEmail ? "email" : "phone"
+        }`,
       });
     } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: (error as Error).message });
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: (error as Error).message,
+      });
     }
   }
 
   async verifyContact(req: Request, res: Response): Promise<void> {
     try {
       const { userId, code, type } = req.body;
-      const verificationRecord = await VerificationCode.findOne({ user: userId, type, code });
+      const verificationRecord = await VerificationCode.findOne({
+        user: userId,
+        type,
+        code,
+      });
 
       if (!verificationRecord) {
-        res.status(400).json({ success: false, message: 'Invalid verification code' });
+        res
+          .status(400)
+          .json({ success: false, message: "Invalid verification code" });
         return;
       }
 
       if (verificationRecord.expiresAt < new Date()) {
         await VerificationCode.deleteOne({ _id: verificationRecord._id });
-        res.status(400).json({ success: false, message: 'Verification code has expired' });
+        res
+          .status(400)
+          .json({ success: false, message: "Verification code has expired" });
         return;
       }
 
       const user = await User.findById(userId);
       if (!user) {
-        res.status(404).json({ success: false, message: 'User not found' });
+        res.status(404).json({ success: false, message: "User not found" });
         return;
       }
 
-      if (type === 'email') user.isEmailVerified = true;
-      else if (type === 'phone') user.isPhoneVerified = true;
+      if (type === "email") user.isEmailVerified = true;
+      else if (type === "phone") user.isPhoneVerified = true;
 
       await user.save();
       await VerificationCode.deleteOne({ _id: verificationRecord._id });
 
-      res.status(200).json({ success: true, message: `${type === 'email' ? 'Email' : 'Phone'} verified successfully` });
+      res.status(200).json({
+        success: true,
+        message: `${
+          type === "email" ? "Email" : "Phone"
+        } verified successfully`,
+      });
     } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: (error as Error).message });
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -130,42 +175,65 @@ class AuthController {
       const user = await User.findById(userId);
 
       if (!user) {
-        res.status(404).json({ success: false, message: 'User not found' });
+        res.status(404).json({ success: false, message: "User not found" });
         return;
       }
 
       await VerificationCode.deleteMany({ user: userId, type });
 
       const verificationCode = generateNumCode();
-      await VerificationCode.create({ user: user._id, code: verificationCode, type });
+      await VerificationCode.create({
+        user: user._id,
+        code: verificationCode,
+        type,
+      });
 
-      if (type === 'email') {
+      if (type === "email") {
         if (!user.email) {
-          res.status(400).json({ success: false, message: 'User does not have an email address' });
+          res.status(400).json({
+            success: false,
+            message: "User does not have an email address",
+          });
           return;
         }
         await sendVerificationEmail(user.email, verificationCode);
-      } else if (type === 'phone') {
+      } else if (type === "phone") {
         if (!user.phoneNumber) {
-          res.status(400).json({ success: false, message: 'User does not have a phone number' });
+          res.status(400).json({
+            success: false,
+            message: "User does not have a phone number",
+          });
           return;
         }
         await sendVerificationSMS(user.phoneNumber, verificationCode);
       }
 
-      res.status(200).json({ success: true, message: `Verification code resent to your ${type === 'email' ? 'email' : 'phone'}` });
+      res.status(200).json({
+        success: true,
+        message: `Verification code resent to your ${
+          type === "email" ? "email" : "phone"
+        }`,
+      });
     } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: (error as Error).message });
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: (error as Error).message,
+      });
     }
   }
 
   async completeProfile(req: Request, res: Response): Promise<void> {
     try {
       const { userId, username, careerType, receiveUpdates } = req.body;
-      const existingUsername = await User.findOne({ username }).exec() as (IUser & { _id: any }) | null;
+      const existingUsername = (await User.findOne({ username }).exec()) as
+        | (IUser & { _id: any })
+        | null;
 
       if (existingUsername && existingUsername._id.toString() !== userId) {
-        res.status(400).json({ success: false, message: 'Username already taken' });
+        res
+          .status(400)
+          .json({ success: false, message: "Username already taken" });
         return;
       }
 
@@ -176,44 +244,66 @@ class AuthController {
       );
 
       if (!user) {
-        res.status(404).json({ success: false, message: 'User not found' });
+        res.status(404).json({ success: false, message: "User not found" });
         return;
       }
 
       const token = user.getSignedJwtToken();
-      res.status(200).json({ success: true, message: 'Profile completed successfully', token });
+      res.status(200).json({
+        success: true,
+        message: "Profile completed successfully",
+        token,
+      });
     } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: (error as Error).message });
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: (error as Error).message,
+      });
     }
   }
 
   async login(req: Request, res: Response): Promise<void> {
     try {
       const { emailOrPhone, password } = req.body;
-      const isEmail = emailOrPhone.includes('@');
-      const query = isEmail ? { email: emailOrPhone } : { phoneNumber: emailOrPhone };
-      const user = await User.findOne(query).select('+password');
+      const isEmail = emailOrPhone.includes("@");
+      const query = isEmail
+        ? { email: emailOrPhone }
+        : { phoneNumber: emailOrPhone };
+      const user = await User.findOne(query).select("+password");
 
       if (!user) {
-        res.status(401).json({ success: false, message: 'Invalid credentials' });
+        res
+          .status(401)
+          .json({ success: false, message: "Invalid credentials" });
         return;
       }
 
       const isMatch = await user.matchPassword(password);
       if (!isMatch) {
-        res.status(401).json({ success: false, message: 'Invalid credentials' });
+        res
+          .status(401)
+          .json({ success: false, message: "Invalid credentials" });
         return;
       }
 
       if (!user.username || !user.careerType) {
-        res.status(400).json({ success: false, message: 'Please complete your profile', userId: user._id });
+        res.status(400).json({
+          success: false,
+          message: "Please complete your profile",
+          userId: user._id,
+        });
         return;
       }
 
       const token = user.getSignedJwtToken();
       res.status(200).json({ success: true, token });
     } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: (error as Error).message });
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -222,7 +312,11 @@ class AuthController {
       const user = await User.findById(req.user!._id);
       res.status(200).json({ success: true, data: user });
     } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: (error as Error).message });
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -232,7 +326,10 @@ class AuthController {
       const user = await User.findOne({ email });
 
       if (!user) {
-        res.status(404).json({ success: false, message: 'No account found with this email' });
+        res.status(404).json({
+          success: false,
+          message: "No account found with this email",
+        });
         return;
       }
 
@@ -243,10 +340,16 @@ class AuthController {
 
       await sendPasswordResetEmail(email, resetToken);
 
-      res.status(200).json({ success: true, message: 'Password reset instructions sent to your email' });
+      res.status(200).json({
+        success: true,
+        message: "Password reset instructions sent to your email",
+      });
     } catch (error) {
-      console.error('Forgot password error:', error);
-      res.status(500).json({ success: false, message: 'An error occurred while processing your request' });
+      console.error("Forgot password error:", error);
+      res.status(500).json({
+        success: false,
+        message: "An error occurred while processing your request",
+      });
     }
   }
 
@@ -259,7 +362,10 @@ class AuthController {
       });
 
       if (!user) {
-        res.status(400).json({ success: false, message: 'Password reset token is invalid or has expired' });
+        res.status(400).json({
+          success: false,
+          message: "Password reset token is invalid or has expired",
+        });
         return;
       }
 
@@ -268,10 +374,16 @@ class AuthController {
       user.resetPasswordExpires = undefined;
       await user.save();
 
-      res.status(200).json({ success: true, message: 'Your password has been updated successfully' });
+      res.status(200).json({
+        success: true,
+        message: "Your password has been updated successfully",
+      });
     } catch (error) {
-      console.error('Reset password error:', error);
-      res.status(500).json({ success: false, message: 'An error occurred while resetting your password' });
+      console.error("Reset password error:", error);
+      res.status(500).json({
+        success: false,
+        message: "An error occurred while resetting your password",
+      });
     }
   }
 }
