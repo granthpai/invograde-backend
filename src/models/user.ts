@@ -15,7 +15,6 @@ export interface IUser extends Document {
   careerType: 'Developer' | 'Designer' | 'Both';
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
-  receiveUpdates: boolean;
   createdAt: Date;
   updatedAt: Date;
   matchPassword: (enteredPassword: string) => Promise<boolean>;
@@ -68,10 +67,6 @@ const UserSchema = new Schema<IUser>(
       type: String,
       enum: ['Developer', 'Designer', 'Both'],
       required: [true, 'Please select a career type'],
-    },
-    receiveUpdates: {
-      type: Boolean,
-      default: false,
     },
     resetPasswordToken: String,
     resetPasswordExpires: Date,

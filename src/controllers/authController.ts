@@ -1,11 +1,11 @@
-import { Request, Response } from "express";
+import { Request, response, Response } from "express";
 import { validationResult } from "express-validator";
 import User, { IUser } from "../models/user";
+import { IVerificationCode } from "../models/verificationCode";
 import VerificationCode from "../models/verificationCode";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../config/email";
 import { sendVerificationSMS } from "../config/sms";
 import { generateNumCode } from "../utils/generateVerificationCode";
-
 class AuthController {
   async checkExists(req: Request, res: Response): Promise<void> {
     try {
@@ -55,7 +55,15 @@ class AuthController {
           return;
         }
 
-        console.log("creating user");
+        const verificationCode = generateNumCode();
+
+        const resp = await sendVerificationEmail({
+          user: { email: emailOrPhone },
+          verificationCode,
+        });
+
+        console.log("resp", resp);
+
         user = await User.create({
           email: emailOrPhone,
           password,
@@ -65,45 +73,17 @@ class AuthController {
           username,
         });
 
-        console.log("user", user);
-
-        const verificationCode = generateNumCode();
-        await VerificationCode.create({
+        const verificationCodeInstance = await VerificationCode.create({
           user: user._id,
           code: verificationCode,
           type: "email",
         });
-        await sendVerificationEmail(emailOrPhone, verificationCode);
-      } else {
-        const existingUser = await User.findOne({ phoneNumber: emailOrPhone });
-        if (existingUser) {
-          res.status(400).json({
-            success: false,
-            message: "User already exists with this phone number",
-          });
-          return;
-        }
-
-        user = await User.create({
-          phoneNumber: emailOrPhone,
-          password,
-          isEmailVerified: false,
-          isPhoneVerified: false,
-          careerType: career,
-        });
-
-        const verificationCode = generateNumCode();
-        await VerificationCode.create({
-          user: user._id,
-          code: verificationCode,
-          type: "phone",
-        });
-        await sendVerificationSMS(emailOrPhone, verificationCode);
+        console.log("verificationCodeInstance", verificationCodeInstance);
       }
 
       res.status(201).json({
         success: true,
-        userId: user._id,
+        userId: user?._id,
         verificationType: isEmail ? "email" : "phone",
         message: `Verification code sent to your ${
           isEmail ? "email" : "phone"
@@ -196,7 +176,10 @@ class AuthController {
           });
           return;
         }
-        await sendVerificationEmail(user.email, verificationCode);
+        await sendVerificationEmail({
+          user: { email: user.email },
+          verificationCode,
+        });
       } else if (type === "phone") {
         if (!user.phoneNumber) {
           res.status(400).json({

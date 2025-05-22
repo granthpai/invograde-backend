@@ -1,76 +1,133 @@
-import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
-
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+import { IEmailVerificationPayload } from "../types/auth";
 dotenv.config();
 
+// Create Gmail SMTP transporter
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_ENDPOINT,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false,
+  service: "gmail",
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
+
+// Add error handling for debugging
+transporter.on("error", (err) => {
+  console.error("SMTP Error:", err);
+});
+
+// Add logging for successful connections
+transporter.on("token", (token) => {
+  console.log("SMTP Token:", token);
 });
 
 export const sendVerificationEmail = async (
-  to: string,
-  verificationCode: string
+  payload: IEmailVerificationPayload
 ) => {
+  const { user, verificationCode } = payload;
+
+  if (!user.email) {
+    throw new Error("User email is required to send verification email");
+  }
+
+  const { email } = user;
+
   try {
-    await transporter.sendMail({
-      from: "invograde@gmail.com",
-      sender:"invograde@gmail.com",
-      to,
-      subject: 'Verify your email address',
+    const mailOptions = {
+      from: process.env.SMTP_USER,
+      to: email,
+      subject: "Verify your email address",
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Welcome to Invograde!</h2>
-          <p>Please use the following verification code to complete your registration:</p>
-          <h3 style="letter-spacing: 5px; text-align: center; font-size: 24px;">${verificationCode}</h3>
-          <p>This code will expire in 60 seconds.</p>
-          <p>If you didn't request this verification, please ignore this email.</p>
-          <p>Thanks,<br>The Invograde Team</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Welcome to Our App!</h2>
+          <p style="font-size: 16px; color: #666;">Please use the following verification code to complete your registration:</p>
+          <h3 style="letter-spacing: 5px; text-align: center; font-size: 24px; color: #4CAF50; margin: 20px 0;">${verificationCode}</h3>
+          <p style="font-size: 16px; color: #666;">This code will expire in 60 seconds.</p>
+          <p style="font-size: 16px; color: #666;">If you didn't request this verification, please ignore this email.</p>
+          <p style="font-size: 16px; color: #666;">Thanks,<br>The Team</p>
         </div>
       `,
-    });
+      text: `Welcome to Our App!
+        
+        Please use the following verification code to complete your registration:
+        
+        ${verificationCode}
+        
+        This code will expire in 60 seconds.
+        
+        If you didn't request this verification, please ignore this email.
+        
+        Thanks,
+        The Team`,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Verification email sent successfully!");
+    console.log("Message ID:", info.messageId);
+
+    return info;
   } catch (error) {
-    console.error('Error sending email:', error);
-    throw new Error('Failed to send verification email');
+    console.error("Error sending verification email:", error);
+    throw new Error("Failed to send verification email");
   }
 };
 
-
-
-export const sendPasswordResetEmail = async (to: string, resetToken: string) => {
+export const sendPasswordResetEmail = async (
+  to: string,
+  resetToken: string
+) => {
   try {
-    await transporter.sendMail({
-      from: "invograde@gmail.com",
-      sender: "invograde@gmail.com",
+    console.log("Sending password reset email to:", to);
+
+    const mailOptions = {
+      from: process.env.SMTP_USER || "youremail@gmail.com",
       to,
-      subject: 'Reset your Invograde password',
+      subject: "Reset your password",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2>Password Reset Request</h2>
-          <p>Dear user,</p>
-          <p>We received a request to reset your password for your Invograde account. If you didn't request this, please ignore this email.</p>
-          <p>To reset your password, please click the link below:</p>
-          <p style="text-align: center; margin: 20px 0;">
-            <a href="${process.env.FRONTEND_URL}/reset-password/${resetToken}" 
-               style="background-color: #4CAF50; color: white; padding: 12px 24px; 
-                      text-decoration: none; border-radius: 4px; display: inline-block;">
+          <h2 style="color: #333;">Password Reset</h2>
+          <p style="font-size: 16px; color: #666;">Click the link below to reset your password:</p>
+          <p style="font-size: 16px; color: #666; margin: 20px 0; text-align: center;">
+            <a href="${
+              process.env.FRONTEND_URL || "http://localhost:3000"
+            }/reset-password/${resetToken}" 
+               style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">
               Reset Password
             </a>
           </p>
-          <p>This link will expire in 1 hour.</p>
-          <p>For security reasons, please do not share this link with anyone.</p>
-          <p>Thanks,<br>The Invograde Team</p>
+          <p style="font-size: 16px; color: #666;">This link will expire in 30 minutes.</p>
+          <p style="font-size: 16px; color: #666;">If you didn't request this password reset, please ignore this email.</p>
+          <p style="font-size: 16px; color: #666;">Thanks,<br>The Team</p>
         </div>
       `,
-    });
+      text: `Password Reset Request
+        
+        Click the link below to reset your password:
+        
+        ${
+          process.env.FRONTEND_URL || "http://localhost:3000"
+        }/reset-password/${resetToken}
+        
+        This link will expire in 30 minutes.
+        
+        If you didn't request this password reset, please ignore this email.
+        
+        Thanks,
+        The Team`,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Password reset email sent successfully!");
+    console.log("Message ID:", info.messageId);
+
+    return info;
   } catch (error) {
-    console.error('Error sending password reset email:', error);
-    throw new Error('Failed to send password reset email');
+    console.error("Error sending password reset email:", error);
+    throw new Error("Failed to send password reset email");
   }
 };
 

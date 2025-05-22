@@ -26,7 +26,6 @@ const VerificationCodeSchema = new Schema<IVerificationCode>(
     },
     expiresAt: {
       type: Date,
-      required: true,
       default: function () {
         return new Date(Date.now() + 60 * 1000);//1min
       },
