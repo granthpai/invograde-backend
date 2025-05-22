@@ -3,26 +3,12 @@ import dotenv from "dotenv";
 import { IEmailVerificationPayload } from "../types/auth";
 dotenv.config();
 
-// Create Gmail SMTP transporter
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
-
-// Add error handling for debugging
-transporter.on("error", (err) => {
-  console.error("SMTP Error:", err);
-});
-
-// Add logging for successful connections
-transporter.on("token", (token) => {
-  console.log("SMTP Token:", token);
 });
 
 export const sendVerificationEmail = async (
@@ -38,7 +24,7 @@ export const sendVerificationEmail = async (
 
   try {
     const mailOptions = {
-      from: process.env.SMTP_USER,
+      from: process.env.EMAIL_USER,
       to: email,
       subject: "Verify your email address",
       html: `
