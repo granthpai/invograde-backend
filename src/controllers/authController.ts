@@ -266,27 +266,37 @@ class AuthController {
   async login(req: Request, res: Response): Promise<void> {
     try {
       const { emailOrPhone, password } = req.body;
-      const isEmail = emailOrPhone.includes("@");
-      const query = isEmail
-        ? { email: emailOrPhone }
-        : { phoneNumber: emailOrPhone };
-      const user = await User.findOne(query).select("+password");
 
+      const sanitizedInput = emailOrPhone.trim().toLowerCase();
+      
+      let query: any;
+      
+      if (sanitizedInput.includes("@")) {
+        query = { email: sanitizedInput };
+      } else if (/^\+?[\d\s\-\(\)]+$/.test(emailOrPhone)) {
+        query = { phoneNumber: emailOrPhone };
+      } else {
+        query = { username: emailOrPhone };
+      }
+  
+      const user = await User.findOne(query).select("+password");
       if (!user) {
-        res
-          .status(401)
-          .json({ success: false, message: "Invalid credentials" });
+        res.status(401).json({ 
+          success: false, 
+          message: "Invalid credentials" 
+        });
         return;
       }
-
+  
       const isMatch = await user.matchPassword(password);
       if (!isMatch) {
-        res
-          .status(401)
-          .json({ success: false, message: "Invalid credentials" });
+        res.status(401).json({ 
+          success: false, 
+          message: "Incorrect password" 
+        });
         return;
       }
-
+  
       if (!user.username || !user.careerType) {
         res.status(400).json({
           success: false,
@@ -295,10 +305,14 @@ class AuthController {
         });
         return;
       }
-
+  
       const token = user.getSignedJwtToken();
-      res.status(200).json({ success: true, token });
+      res.status(200).json({ 
+        success: true, 
+        token
+      });
     } catch (error) {
+      console.error("Login error:", error);
       res.status(500).json({
         success: false,
         message: "Server error",
