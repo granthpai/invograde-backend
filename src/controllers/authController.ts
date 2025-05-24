@@ -62,8 +62,6 @@ class AuthController {
           verificationCode,
         });
 
-        console.log("resp", resp);
-
         userData = {
           email: emailOrPhone,
           password,
@@ -79,16 +77,22 @@ class AuthController {
           type: "email",
         });
         console.log("verificationCodeInstance", verificationCodeInstance);
-      }
+        const { password: _, ...safeUserData } = userData;
 
-      res.status(201).json({
-        success: true,
-        userData,
-        verificationType: isEmail ? "email" : "phone",
-        message: `Verification code sent to your ${
-          isEmail ? "email" : "phone"
-        }`,
-      });
+        res.status(201).json({
+          success: true,
+          userData: safeUserData,
+          verificationType: isEmail ? "email" : "phone",
+          message: `Verification code sent to your ${
+            isEmail ? "email" : "phone"
+          }`,
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: "Phone registration not implemented yet",
+        });
+      }
     } catch (error) {
       res.status(500).json({
         success: false,
@@ -100,10 +104,10 @@ class AuthController {
 
   async verifyContact(req: Request, res: Response): Promise<void> {
     try {
-      const { code } = req.body;
-      console.log("code", code);
+      const { user, code } = req.body;
       const verificationRecord = await VerificationCode.findOne({
         code,
+        "tempUserData.email": user.email,
       });
 
       if (!verificationRecord) {
@@ -134,7 +138,7 @@ class AuthController {
       const existingUser = await User.findOne({
         $or: [
           { email: tempUserData.email },
-          { phoneNumber: tempUserData.phoneNumber },
+          // { phoneNumber: tempUserData.phoneNumber },
         ],
       });
 
@@ -276,9 +280,9 @@ class AuthController {
       const { emailOrPhone, password } = req.body;
 
       const sanitizedInput = emailOrPhone.trim().toLowerCase();
-      
+
       let query: any;
-      
+
       if (sanitizedInput.includes("@")) {
         query = { email: sanitizedInput };
       } else if (/^\+?[\d\s\-\(\)]+$/.test(emailOrPhone)) {
@@ -286,25 +290,27 @@ class AuthController {
       } else {
         query = { username: emailOrPhone };
       }
-  
+
       const user = await User.findOne(query).select("+password");
       if (!user) {
-        res.status(401).json({ 
-          success: false, 
-          message: "Invalid credentials" 
+        res.status(401).json({
+          success: false,
+          message: "Invalid credentials",
         });
         return;
       }
-  
+
+      console.log("password", user);
+
       const isMatch = await user.matchPassword(password);
       if (!isMatch) {
-        res.status(401).json({ 
-          success: false, 
-          message: "Incorrect password" 
+        res.status(401).json({
+          success: false,
+          message: "Incorrect password",
         });
         return;
       }
-  
+
       if (!user.username || !user.careerType) {
         res.status(400).json({
           success: false,
@@ -313,11 +319,12 @@ class AuthController {
         });
         return;
       }
-  
+
       const token = user.getSignedJwtToken();
-      res.status(200).json({ 
-        success: true, 
-        token
+      res.status(200).json({
+        success: true,
+        token,
+        user,
       });
     } catch (error) {
       console.error("Login error:", error);
