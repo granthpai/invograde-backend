@@ -1,33 +1,43 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from "mongoose";
+
+interface TempUserData {
+  email?: string;
+  phoneNumber?: string;
+  password: string;
+  username: string;
+  careerType: string;
+}
 
 export interface IVerificationCode extends Document {
-  user: mongoose.Types.ObjectId;
   code: string;
-  type: 'email' | 'phone';
+  type: "email" | "phone";
   expiresAt: Date;
   createdAt: Date;
+  tempUserData: TempUserData;
 }
 
 const VerificationCodeSchema = new Schema<IVerificationCode>(
   {
-    user: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
     code: {
       type: String,
       required: true,
     },
     type: {
       type: String,
-      enum: ['email', 'phone'],
+      enum: ["email", "phone"],
       required: true,
+    },
+    tempUserData: {
+      email: { type: String },
+      phoneNumber: { type: String },
+      password: { type: String, required: true },
+      username: { type: String, required: true },
+      careerType: { type: String, required: true },
     },
     expiresAt: {
       type: Date,
       default: function () {
-        return new Date(Date.now() + 60 * 1000);//1min
+        return new Date(Date.now() + 60 * 1000); // 1 min
       },
     },
   },
@@ -36,8 +46,12 @@ const VerificationCodeSchema = new Schema<IVerificationCode>(
   }
 );
 
+// Auto-delete expired documents
 VerificationCodeSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-const VerificationCode = mongoose.model<IVerificationCode>('VerificationCode',VerificationCodeSchema);
+const VerificationCode = mongoose.model<IVerificationCode>(
+  "VerificationCode",
+  VerificationCodeSchema
+);
 
 export default VerificationCode;

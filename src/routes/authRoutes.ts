@@ -20,9 +20,9 @@ router.post('/register',
 );
 
 router.post('/verify', 
-  body('userId').notEmpty(),
+  // body('userId').notEmpty(),
   body('code').notEmpty(),
-  body('type').isIn(['email', 'phone']),
+  // body('type').isIn(['email', 'phone']),
   validateRequest,
   authController.verifyContact
 );

@@ -43,7 +43,7 @@ class AuthController {
     try {
       const { emailOrPhone, password, username, career } = req.body;
       const isEmail = emailOrPhone.includes("@");
-      let user;
+      let userData;
 
       if (isEmail) {
         const existingUser = await User.findOne({ email: emailOrPhone });
@@ -64,17 +64,17 @@ class AuthController {
 
         console.log("resp", resp);
 
-        user = await User.create({
+        userData = {
           email: emailOrPhone,
           password,
           isEmailVerified: false,
           isPhoneVerified: false,
           careerType: career,
           username,
-        });
+        };
 
         const verificationCodeInstance = await VerificationCode.create({
-          user: user._id,
+          tempUserData: userData,
           code: verificationCode,
           type: "email",
         });
@@ -83,7 +83,7 @@ class AuthController {
 
       res.status(201).json({
         success: true,
-        userId: user?._id,
+        userData,
         verificationType: isEmail ? "email" : "phone",
         message: `Verification code sent to your ${
           isEmail ? "email" : "phone"
@@ -100,10 +100,9 @@ class AuthController {
 
   async verifyContact(req: Request, res: Response): Promise<void> {
     try {
-      const { userId, code, type } = req.body;
+      const { code } = req.body;
+      console.log("code", code);
       const verificationRecord = await VerificationCode.findOne({
-        user: userId,
-        type,
         code,
       });
 
@@ -122,22 +121,48 @@ class AuthController {
         return;
       }
 
-      const user = await User.findById(userId);
-      if (!user) {
-        res.status(404).json({ success: false, message: "User not found" });
+      const tempUserData = verificationRecord.tempUserData;
+
+      if (!tempUserData) {
+        res.status(400).json({
+          success: false,
+          message: "Temporary user data not found",
+        });
         return;
       }
 
-      if (type === "email") user.isEmailVerified = true;
-      else if (type === "phone") user.isPhoneVerified = true;
+      const existingUser = await User.findOne({
+        $or: [
+          { email: tempUserData.email },
+          { phoneNumber: tempUserData.phoneNumber },
+        ],
+      });
 
-      await user.save();
+      if (existingUser) {
+        res.status(400).json({
+          success: false,
+          message: "User already exists",
+        });
+        return;
+      }
+
+      const newUser = await User.create({
+        email: tempUserData.email,
+        phoneNumber: tempUserData.phoneNumber,
+        password: tempUserData.password,
+        username: tempUserData.username,
+        careerType: tempUserData.careerType,
+        isEmailVerified: verificationRecord.type === "email",
+        isPhoneVerified: verificationRecord.type === "phone",
+      });
+
       await VerificationCode.deleteOne({ _id: verificationRecord._id });
 
       res.status(200).json({
         success: true,
+        newUser,
         message: `${
-          type === "email" ? "Email" : "Phone"
+          verificationRecord.type === "email" ? "Email" : "Phone"
         } verified successfully`,
       });
     } catch (error) {
