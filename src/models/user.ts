@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { ProjectSchema,IProject } from './project';
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ export interface IUser extends Document {
   careerType: 'Developer' | 'Designer' | 'Both';
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
+  projects: IProject[];
   createdAt: Date;
   updatedAt: Date;
   matchPassword: (enteredPassword: string) => Promise<boolean>;
@@ -70,13 +72,16 @@ const UserSchema = new Schema<IUser>(
     },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
+    projects: {
+      type: [ProjectSchema],
+      default: [],
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// Hash password before saving
 UserSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     next();
@@ -86,12 +91,9 @@ UserSchema.pre('save', async function (next) {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Compare entered password with stored hashed password
 UserSchema.methods.matchPassword = async function (enteredPassword: string) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
-
-// Generate JWT token
 UserSchema.methods.getSignedJwtToken = function () {
   const secret = process.env.JWT_SECRET;
   const expiresIn = process.env.JWT_EXPIRE;

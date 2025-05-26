@@ -5,7 +5,7 @@ import authRoutes from "./routes/authRoutes";
 import errorHandler from "./middlewares/errorHandler";
 import fileUploadRoutes from "./routes/fileUploadRoutes";
 import projectRoutes from "./routes/projectRoutes";
-import resumeRoutes from "./routes/resume";
+import resumeRoutes from "./routes/resumeRoutes";
 
 dotenv.config();
 

@@ -415,6 +415,19 @@ class AuthController {
       });
     }
   }
+
+  async logout(req: Request, res: Response): Promise<void> {
+    try {
+      res.clearCookie("token");
+      res.status(200).json({ success: true, message: "Logged out successfully" });
+    } catch (error) {
+      console.error("Logout error:", error);
+      res.status(500).json({
+        success: false,
+        message: "An error occurred while logging out",
+      });
+    }
+  }
 }
 
 export default new AuthController();
