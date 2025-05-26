@@ -11,7 +11,11 @@ export class ProjectController {
         skills, 
         domain, 
         tags, 
-        thumbnail 
+        thumbnail,
+        likes,
+        likesBy,
+        projectUrl,
+        githubUrl
       } = req.body;
 
       if (!title || !description || !skills || !Array.isArray(skills)) {
@@ -40,10 +44,13 @@ export class ProjectController {
         description,
         skills,
         domain,
-        tags: tags || [],
+        tags,
         userId,
         thumbnail,
-        likes: 0
+        likes,
+        likesBy,
+        projectUrl,
+        githubUrl
       });
 
       const savedProject = await newProject.save();
