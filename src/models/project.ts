@@ -9,7 +9,7 @@ export interface IProject extends Document {
   userId: mongoose.Schema.Types.ObjectId;
   thumbnail?: string;
   likes?: number;
-  likesBy?: mongoose.Schema.Types.ObjectId[];
+  likesBy?: string[];
   projectUrl?: string;
   githubUrl?: string;
   createdAt?: Date;
@@ -47,8 +47,7 @@ export const ProjectSchema: Schema = new Schema({
     default: 0 
   },
   likesBy: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    type: String
   }],
   projectUrl: {
     type: String,
