@@ -1,6 +1,6 @@
 import express from 'express';
 import { resumeController } from '../controllers/resumeController';
-import { protect } from '../middlewares/auth';
+import { protect } from '../middlewares/authMiddleware';
 
 const router = express.Router();
 

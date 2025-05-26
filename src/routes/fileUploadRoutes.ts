@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { body } from 'express-validator';
 import fileUploadController from '../controllers/fileUploadController';
-import { protect } from '../middlewares/auth';
+import { protect } from '../middlewares/authMiddleware';
 import { validateRequest } from '../middlewares/validation';
 
 const router = express.Router();

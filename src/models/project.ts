@@ -1,25 +1,22 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface Skill {
-  name: string;
-  category?: string;
-}
 export interface IProject extends Document {
   title: string;
   description: string;
-  skills: Skill[];
+  skills: string[];
   domain?: string;
   tags?: string[];
-  userId: string;
+  userId: mongoose.Schema.Types.ObjectId;
   thumbnail?: string;
-  isPublic?: boolean;
   likes?: number;
-  likesBy?: string[];
+  likesBy?: mongoose.Schema.Types.ObjectId[];
+  projectUrl?: string;
+  githubUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-const ProjectSchema: Schema = new Schema({
+export const ProjectSchema: Schema = new Schema({
   title: { 
     type: String, 
     required: true,
@@ -30,8 +27,7 @@ const ProjectSchema: Schema = new Schema({
     required: true 
   },
   skills: [{
-    name: { type: String, required: true },
-    category: { type: String }
+    type: String
   }],
   domain: { 
     type: String 
@@ -39,25 +35,35 @@ const ProjectSchema: Schema = new Schema({
   tags: [{ 
     type: String 
   }],
-  userId: { 
-    type: String, 
-    required: true 
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
   thumbnail: { 
     type: String 
-  },
-  isPublic: { 
-    type: Boolean, 
-    default: true 
   },
   likes: { 
     type: Number, 
     default: 0 
   },
   likesBy: [{
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  projectUrl: {
+    type: String,
+    match: [
+      /^https?:\/\/.+/,
+      'Please provide a valid URL'
+    ],
+  },
+  githubUrl: {
+    type: String,
+    match: [
+      /^https?:\/\/(www\.)?github\.com\/.+/,
+      'Please provide a valid GitHub URL'
+    ],
+  },
 }, {
   timestamps: true
 });

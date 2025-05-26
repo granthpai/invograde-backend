@@ -1,7 +1,7 @@
 import express from "express";
 import { body } from "express-validator";
 import authController from "../controllers/authController";
-import { protect } from "../middlewares/auth";
+import { protect } from "../middlewares/authMiddleware";
 import { validateRequest } from "../middlewares/validation";
 
 const router = express.Router();
@@ -27,7 +27,6 @@ router.post(
   "/verify",
   body("user").notEmpty(),
   body("code").notEmpty(),
-  // body('type').isIn(['email', 'phone']),
   validateRequest,
   authController.verifyContact
 );
@@ -73,5 +72,7 @@ router.post(
   validateRequest,
   authController.resetPassword
 );
+
+router.post("/logout", protect, authController.logout);
 
 export default router;
