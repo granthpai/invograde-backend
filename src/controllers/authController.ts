@@ -291,7 +291,7 @@ class AuthController {
         query = { username: emailOrPhone };
       }
 
-      const user = await User.findOne(query).select("+password");
+      const user = await User.findOne(query).select("-password");
       if (!user) {
         res.status(401).json({
           success: false,
@@ -300,7 +300,7 @@ class AuthController {
         return;
       }
 
-      console.log("password", user);
+      console.log("user without pass", user);
 
       const isMatch = await user.matchPassword(password);
       if (!isMatch) {
