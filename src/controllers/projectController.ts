@@ -1,8 +1,15 @@
 import { Request, Response } from 'express';
 import { Project } from '../models/project';
 import mongoose from 'mongoose';
+import { uploadToS3, deleteFromS3, getPresignedUrl, validateS3Config } from '../utils/fileUpload';
 
 export class ProjectController {
+  constructor() {
+    if (!validateS3Config()) {
+      console.warn('AWS S3 configuration is incomplete. File upload features may not work properly.');
+    }
+  }
+
   async createProject(req: Request, res: Response): Promise<void> {
     try {
       const { 
@@ -11,7 +18,6 @@ export class ProjectController {
         skills, 
         domain, 
         tags, 
-        thumbnail,
         likes,
         likesBy,
         projectUrl,
@@ -39,6 +45,22 @@ export class ProjectController {
         return;
       }
 
+      let thumbnailUrl = '';
+      
+      if (req.file) {
+        try {
+          const uploadResult = await uploadToS3(req.file, 'project-thumbnails');
+          thumbnailUrl = uploadResult.fileUrl;
+        } catch (uploadError) {
+          console.error('Failed to upload thumbnail:', uploadError);
+          res.status(500).json({ 
+            message: 'Failed to upload thumbnail', 
+            error: uploadError instanceof Error ? uploadError.message : 'Unknown upload error' 
+          });
+          return;
+        }
+      }
+
       const newProject = new Project({
         title,
         description,
@@ -46,9 +68,9 @@ export class ProjectController {
         domain,
         tags,
         userId,
-        thumbnail,
-        likes,
-        likesBy,
+        thumbnail: thumbnailUrl,
+        likes: likes || 0,
+        likesBy: likesBy || [],
         projectUrl,
         githubUrl
       });
@@ -68,6 +90,96 @@ export class ProjectController {
     }
   }
 
+  async uploadProjectThumbnail(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectId } = req.params;
+      const userId = req.user?.id as string;
+
+      if (!projectId || !mongoose.Types.ObjectId.isValid(projectId)) {
+        res.status(400).json({ message: 'Valid project ID is required' });
+        return;
+      }
+
+      if (!userId) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+
+      if (!req.file) {
+        res.status(400).json({ message: 'No file uploaded' });
+        return;
+      }
+
+      const project = await Project.findOne({ _id: projectId, userId });
+      if (!project) {
+        res.status(404).json({ message: 'Project not found or unauthorized' });
+        return;
+      }
+
+      if (project.thumbnail) {
+        try {
+          await deleteFromS3(project.thumbnail);
+        } catch (error) {
+          console.warn('Failed to delete old thumbnail:', error);
+        }
+      }
+
+      const uploadResult = await uploadToS3(req.file, 'project-thumbnails');
+
+      const updatedProject = await Project.findByIdAndUpdate(
+        projectId,
+        {
+          thumbnail: uploadResult.fileUrl,
+          },
+        { new: true }
+      );
+
+      res.status(200).json({
+        message: 'Thumbnail uploaded successfully',
+        project: updatedProject,
+        thumbnailUrl: uploadResult.fileUrl
+      });
+    } catch (error) {
+      console.error('Error uploading thumbnail:', error);
+      res.status(500).json({ 
+        message: 'Error uploading thumbnail', 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  }
+
+  async getPresignedUploadUrl(req: Request, res: Response): Promise<void> {
+    try {
+      const { fileName, fileType } = req.body;
+      const userId = req.user?.id as string;
+
+      if (!userId) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+
+      if (!fileName || !fileType) {
+        res.status(400).json({ message: 'fileName and fileType are required' });
+        return;
+      }
+
+      const result = await getPresignedUrl(fileName, fileType, 'project-thumbnails');
+
+      res.status(200).json({
+        message: 'Presigned URL generated successfully',
+        presignedUrl: result.presignedUrl,
+        fileKey: result.fileKey,
+        expiresIn: 900 // 15 minutes
+      });
+    } catch (error) {
+      console.error('Error generating presigned URL:', error);
+      res.status(500).json({ 
+        message: 'Error generating presigned URL', 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  }
+
   async getUserProjects(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id as string;
@@ -80,6 +192,7 @@ export class ProjectController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const skip = (page - 1) * limit;
+      
       const projects = await Project.find({ userId })
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -128,13 +241,23 @@ export class ProjectController {
         return;
       }
       
-      const allowedFields = ['title', 'description', 'skills', 'domain', 'tags', 'thumbnail', 'isPublic'];
+      const allowedFields = [
+        'title', 
+        'description', 
+        'skills', 
+        'domain', 
+        'tags', 
+        'isPublic', 
+        'projectUrl', 
+        'githubUrl'
+      ];
       const invalidFields = Object.keys(updateData).filter(field => !allowedFields.includes(field));
       
       if (invalidFields.length > 0) {
         res.status(400).json({ 
           message: 'Invalid fields provided',
-          invalidFields
+          invalidFields,
+          allowedFields
         });
         return;
       }
@@ -209,6 +332,14 @@ export class ProjectController {
         return;
       }
 
+        if (project.thumbnail) {
+        try {
+          await deleteFromS3(project.thumbnail);
+        } catch (error) {
+          console.warn('Failed to delete thumbnail from S3:', error);
+        }
+      }
+
       res.status(200).json({
         message: 'Project deleted successfully',
         project
@@ -276,6 +407,162 @@ export class ProjectController {
       console.error('Error liking project:', error);
       res.status(500).json({ 
         message: 'Error liking project', 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  }
+
+  async unlikeProject(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectId } = req.params;
+      const userId = req.user?.id as string;
+
+      if (!projectId) {
+        res.status(400).json({ message: 'Project ID is required' });
+        return;
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(projectId)) {
+        res.status(400).json({ message: 'Invalid project ID' });
+        return;
+      }
+
+      if (!userId) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+      
+      const existingProject = await Project.findById(projectId);
+      if (!existingProject) {
+        res.status(404).json({ message: 'Project not found' });
+        return;
+      }
+
+      if (!existingProject.likesBy || !existingProject.likesBy.includes(userId)) {
+        res.status(400).json({ message: 'Project not liked by user' });
+        return;
+      }
+      
+      const updatedProject = await Project.findByIdAndUpdate(
+        projectId,
+        { 
+          $inc: { likes: -1 },
+          $pull: { likesBy: userId }
+        },
+        { new: true }
+      );
+
+      if (!updatedProject) {
+        res.status(404).json({ message: 'Project not found' });
+        return;
+      }
+
+      res.status(200).json({
+        message: 'Project unliked successfully',
+        likes: updatedProject.likes,
+        project: updatedProject
+      });
+    } catch (error) {
+      console.error('Error unliking project:', error);
+      res.status(500).json({ 
+        message: 'Error unliking project', 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  }
+
+  async getAllProjects(req: Request, res: Response): Promise<void> {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const skip = (page - 1) * limit;
+      const domain = req.query.domain as string;
+      const search = req.query.search as string;
+      const sortBy = req.query.sortBy as string || 'createdAt';
+      const sortOrder = req.query.sortOrder as string || 'desc';
+
+      let query: any = { isPublic: true };
+
+      if (domain) {
+        query.domain = domain;
+      }
+
+      if (search) {
+        query.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { tags: { $in: [new RegExp(search, 'i')] } }
+        ];
+      }
+
+      const sortObject: any = {};
+      sortObject[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+      const projects = await Project.find(query)
+        .populate('userId', 'username email')
+        .sort(sortObject)
+        .skip(skip)
+        .limit(limit);
+
+      const totalProjects = await Project.countDocuments(query);
+      const totalPages = Math.ceil(totalProjects / limit);
+
+      res.status(200).json({
+        message: 'Projects retrieved successfully',
+        projects,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: totalProjects,
+          itemsPerPage: limit
+        },
+        filters: {
+          domain,
+          search,
+          sortBy,
+          sortOrder
+        }
+      });
+    } catch (error) {
+      console.error('Error retrieving projects:', error);
+      res.status(500).json({ 
+        message: 'Error retrieving projects', 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  }
+
+  async getProjectById(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectId } = req.params;
+
+      if (!projectId || !mongoose.Types.ObjectId.isValid(projectId)) {
+        res.status(400).json({ message: 'Valid project ID is required' });
+        return;
+      }
+
+      const project = await Project.findById(projectId)
+        .populate('userId', 'username email careerType');
+
+      if (!project) {
+        res.status(404).json({ message: 'Project not found' });
+        return;
+      }
+
+      const userId = req.user?.id as string;
+      if (project.userId.toString() !== userId) {
+        res.status(403).json({ message: 'Access denied to private project' });
+        return;
+      }
+
+      res.status(200).json({
+        message: 'Project retrieved successfully',
+        project
+      });
+    } catch (error) {
+      console.error('Error retrieving project:', error);
+      res.status(500).json({ 
+        message: 'Error retrieving project', 
         error: error instanceof Error ? error.message : 'Unknown error' 
       });
     }
