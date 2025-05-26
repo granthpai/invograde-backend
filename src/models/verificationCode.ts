@@ -46,7 +46,6 @@ const VerificationCodeSchema = new Schema<IVerificationCode>(
   }
 );
 
-// Auto-delete expired documents
 VerificationCodeSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const VerificationCode = mongoose.model<IVerificationCode>(

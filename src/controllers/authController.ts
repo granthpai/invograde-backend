@@ -138,7 +138,6 @@ class AuthController {
       const existingUser = await User.findOne({
         $or: [
           { email: tempUserData.email },
-          // { phoneNumber: tempUserData.phoneNumber },
         ],
       });
 
