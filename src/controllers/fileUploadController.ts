@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { uploadToS3, getPresignedUrl } from '../config/fileUpload';
+import { uploadToS3, getPresignedUrl } from '../utils/fileUpload';
 
 class FileUploadController {
   async uploadFile(req: Request, res: Response): Promise<void> {
