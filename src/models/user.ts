@@ -1,8 +1,8 @@
-import mongoose, { Document, Schema } from 'mongoose';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-import { ProjectSchema,IProject } from './project';
+import mongoose, { Document, Schema } from "mongoose";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import { ProjectSchema, IProject } from "./project";
 
 dotenv.config();
 
@@ -13,7 +13,7 @@ export interface IUser extends Document {
   password: string;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
-  careerType: 'Developer' | 'Designer' | 'Both';
+  careerType: "Developer" | "Designer" | "Both";
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   projects: IProject[];
@@ -27,19 +27,19 @@ const UserSchema = new Schema<IUser>(
   {
     username: {
       type: String,
-      required: [true, 'Please add a username'],
+      required: [true, "Please add a username"],
       unique: true,
       trim: true,
-      minlength: [3, 'Username must be at least 3 characters long'],
-      maxlength: [30, 'Username cannot be more than 30 characters'],
+      minlength: [3, "Username must be at least 3 characters long"],
+      maxlength: [30, "Username cannot be more than 30 characters"],
     },
     email: {
       type: String,
-      required: [true, 'Please add an email'],
+      required: [true, "Please add an email"],
       unique: true,
       match: [
         /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-        'Please add a valid email',
+        "Please add a valid email",
       ],
     },
     phoneNumber: {
@@ -48,13 +48,13 @@ const UserSchema = new Schema<IUser>(
       sparse: true,
       match: [
         /^\+[1-9]\d{1,14}$/,
-        'Please add a valid phone number in E.164 format',
+        "Please add a valid phone number in E.164 format",
       ],
     },
     password: {
       type: String,
-      required: [true, 'Please add a password'],
-      minlength: [6, 'Password must be at least 6 characters long'],
+      required: [true, "Please add a password"],
+      minlength: [6, "Password must be at least 6 characters long"],
       select: false,
     },
     isEmailVerified: {
@@ -67,23 +67,25 @@ const UserSchema = new Schema<IUser>(
     },
     careerType: {
       type: String,
-      enum: ['Developer', 'Designer', 'Both'],
-      required: [true, 'Please select a career type'],
+      enum: ["Developer", "Designer", "Both"],
+      required: [true, "Please select a career type"],
     },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
-    projects: {
-      type: [ProjectSchema],
-      default: [],
-    },
+    projects: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Project",
+      },
+    ],
   },
   {
     timestamps: true,
   }
 );
 
-UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) {
     next();
   }
 
@@ -97,18 +99,18 @@ UserSchema.methods.matchPassword = async function (enteredPassword: string) {
 UserSchema.methods.getSignedJwtToken = function () {
   const secret = process.env.JWT_SECRET;
   const expiresIn = process.env.JWT_EXPIRE;
-  
+
   if (!secret || !expiresIn) {
-    throw new Error('JWT_SECRET and JWT_EXPIRE must be set in environment variables');
+    throw new Error(
+      "JWT_SECRET and JWT_EXPIRE must be set in environment variables"
+    );
   }
 
-  return jwt.sign(
-    { id: this._id },
-    secret as jwt.Secret,
-    { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] }
-  );
+  return jwt.sign({ id: this._id }, secret as jwt.Secret, {
+    expiresIn: expiresIn as jwt.SignOptions["expiresIn"],
+  });
 };
 
-const User = mongoose.model<IUser>('User', UserSchema);
+const User = mongoose.model<IUser>("User", UserSchema);
 
 export default User;

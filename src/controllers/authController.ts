@@ -299,8 +299,6 @@ class AuthController {
         return;
       }
 
-      console.log("user without pass", user);
-
       const isMatch = await user.matchPassword(password);
       if (!isMatch) {
         res.status(401).json({

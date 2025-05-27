@@ -55,7 +55,7 @@ export const uploadToS3 = async (
       Key: fileKey,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: 'public-read' as ObjectCannedACL
+      // ACL: 'public-read' as ObjectCannedACL
     };
 
     await s3Client.send(new PutObjectCommand(params));

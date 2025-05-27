@@ -38,12 +38,9 @@ export const protect = async (
       token,
       process.env.JWT_SECRET as string
     ) as DecodedToken;
-
-    console.log("decode", decoded);
-
+    
     const user = await User.findById(decoded.id);
 
-    console.log("user");
     if (!user) {
       res.status(401).json({
         success: false,
