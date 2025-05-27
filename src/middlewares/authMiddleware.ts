@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import User, { IUser } from '../models/user';
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import User, { IUser } from "../models/user";
 
 interface DecodedToken {
   id: string;
@@ -21,17 +21,14 @@ export const protect = async (
 ): Promise<void> => {
   let token;
 
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
-    token = req.headers.authorization.split(' ')[1];
+  if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
   }
 
   if (!token) {
     res.status(401).json({
       success: false,
-      message: 'Not authorized to access this route',
+      message: "Not authorized to access this route",
     });
     return;
   }
@@ -42,12 +39,15 @@ export const protect = async (
       process.env.JWT_SECRET as string
     ) as DecodedToken;
 
+    console.log("decode", decoded);
+
     const user = await User.findById(decoded.id);
 
+    console.log("user");
     if (!user) {
       res.status(401).json({
         success: false,
-        message: 'Not authorized to access this route',
+        message: "Not authorized to access this route",
       });
       return;
     }
@@ -57,7 +57,7 @@ export const protect = async (
   } catch (error) {
     res.status(401).json({
       success: false,
-      message: 'Not authorized to access this route',
+      message: "Not authorized to access this route",
     });
   }
 };

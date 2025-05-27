@@ -6,12 +6,13 @@ import errorHandler from "./middlewares/errorHandler";
 import fileUploadRoutes from "./routes/fileUploadRoutes";
 import projectRoutes from "./routes/projectRoutes";
 import resumeRoutes from "./routes/resumeRoutes";
-
+import cookieParser from 'cookie-parser';
 dotenv.config();
 
 const app = express();
 
 app.use(express.json());
+app.use(cookieParser());
 app.use(
   cors({
     origin: "http://localhost:3000",

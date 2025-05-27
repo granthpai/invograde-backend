@@ -291,7 +291,7 @@ class AuthController {
         query = { username: emailOrPhone };
       }
 
-      const user = await User.findOne(query).select("-password");
+      const user = await User.findOne(query).select("+password");
       if (!user) {
         res.status(401).json({
           success: false,
@@ -320,11 +320,18 @@ class AuthController {
         return;
       }
 
+      const { password: _, ...userWithoutPassword } = user.toObject();
+
       const token = user.getSignedJwtToken();
+
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: true,
+      });
       res.status(200).json({
         success: true,
         token,
-        user,
+        user: userWithoutPassword,
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -419,7 +426,9 @@ class AuthController {
   async logout(req: Request, res: Response): Promise<void> {
     try {
       res.clearCookie("token");
-      res.status(200).json({ success: true, message: "Logged out successfully" });
+      res
+        .status(200)
+        .json({ success: true, message: "Logged out successfully" });
     } catch (error) {
       console.error("Logout error:", error);
       res.status(500).json({
