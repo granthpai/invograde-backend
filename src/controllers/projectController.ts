@@ -91,8 +91,6 @@ export class ProjectController {
         { new: true }
       );
 
-      console.log("user", user);
-
       res.status(201).json({
         message: "Project created successfully",
         success: true,
@@ -224,6 +222,7 @@ export class ProjectController {
       const totalPages = Math.ceil(totalProjects / limit);
 
       res.status(200).json({
+        success: true,
         message: "Projects retrieved successfully",
         projects,
         pagination: {
@@ -236,6 +235,7 @@ export class ProjectController {
     } catch (error) {
       console.error("Error retrieving projects:", error);
       res.status(500).json({
+        success: false,
         message: "Error retrieving projects",
         error: error instanceof Error ? error.message : "Unknown error",
       });
