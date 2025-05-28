@@ -136,9 +136,7 @@ class AuthController {
       }
 
       const existingUser = await User.findOne({
-        $or: [
-          { email: tempUserData.email },
-        ],
+        $or: [{ email: tempUserData.email }],
       });
 
       if (existingUser) {
@@ -324,6 +322,7 @@ class AuthController {
       res.cookie("token", token, {
         httpOnly: true,
         secure: true,
+        sameSite: "none",
       });
       res.status(200).json({
         success: true,
