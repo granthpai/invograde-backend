@@ -1,17 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import User, { IUser } from "../models/user";
+import User from "../models/user";
 
 interface DecodedToken {
   id: string;
-}
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: IUser;
-    }
-  }
 }
 
 export const protect = async (
@@ -50,6 +42,7 @@ export const protect = async (
     }
 
     req.user = user;
+    
     next();
   } catch (error) {
     res.status(401).json({
