@@ -341,7 +341,7 @@ class AuthController {
 
   async getMe(req: Request, res: Response): Promise<void> {
     try {
-      const user = await User.findById(req.user!._id);
+      const user = await User.findById(req.user!.id);
       res.status(200).json({ success: true, data: user });
     } catch (error) {
       res.status(500).json({

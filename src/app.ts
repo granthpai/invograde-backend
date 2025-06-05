@@ -5,7 +5,7 @@ import authRoutes from "./routes/authRoutes";
 import errorHandler from "./middlewares/errorHandler";
 import fileUploadRoutes from "./routes/fileUploadRoutes";
 import projectRoutes from "./routes/projectRoutes";
-import resumeRoutes from "./routes/resumeRoutes";
+import profileRoutes from "./routes/profileRoutes";
 import cookieParser from "cookie-parser";
 dotenv.config();
 
@@ -23,7 +23,7 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/files", fileUploadRoutes);
 app.use("/api/projects", projectRoutes);
-app.use("/api/resume", resumeRoutes);
+app.use("/api/profile", profileRoutes);
 
 app.use(errorHandler);
 
