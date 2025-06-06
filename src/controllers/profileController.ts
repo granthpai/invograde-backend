@@ -17,7 +17,7 @@ interface ValidationError extends Error {
   errors: Record<string, { message: string }>;
 }
 
-class ProfileController {
+export class ProfileController {
   async getProfile(req: Request, res: Response) {
     try {
       if (!req.user) {
@@ -1026,4 +1026,4 @@ class ProfileController {
   }
 }
 
-export default ProfileController;
+export const profileController = new ProfileController();

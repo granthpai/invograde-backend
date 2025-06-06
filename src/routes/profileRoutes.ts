@@ -1,5 +1,5 @@
 import express, { RequestHandler } from "express";
-import profileController from "../controllers/profileController";
+import {profileController} from "../controllers/profileController";
 import { protect } from "../middlewares/authMiddleware";
 import {
   validateProfileUpdate,

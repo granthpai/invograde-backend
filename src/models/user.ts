@@ -146,14 +146,6 @@ const UserSchema = new Schema<IUser>({
     type: String,
     required: false,
   },
-  username: {
-    type: String,
-    required: [true, "Please add a username"],
-    unique: true,
-    trim: true,
-    minlength: [3, "Username must be at least 3 characters long"],
-    maxlength: [30, "Username cannot be more than 30 characters"],
-  },
   email: {
     type: String,
     required: [true, "Please add an email"],
@@ -207,9 +199,6 @@ const UserSchema = new Schema<IUser>({
     proficiency: String,
     yearsOfExperience: Number,
   }],
-  emailVerificationToken: {
-    type: String
-  },
 }, {
   timestamps: true,
 });
