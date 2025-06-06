@@ -54,4 +54,31 @@ router.post(
   profileController.addCertification as RequestHandler
 );
 
+router.put(
+  "/education/:educationId",
+  profileController.updateEducation as RequestHandler
+);
+router.delete(
+  "/education/:educationId",
+  profileController.deleteEducation as RequestHandler
+);
+
+router.put(
+  "/work-experience/:workExperienceId",
+  profileController.updateWorkExperience as RequestHandler
+);
+router.delete(
+  "/work-experience/:workExperienceId",
+  profileController.deleteWorkExperience as RequestHandler
+);
+
+router.put(
+  "/certifications/:certificationId",
+  profileController.updateCertification as RequestHandler
+);
+router.delete(
+  "/certifications/:certificationId",
+  profileController.deleteCertification as RequestHandler
+);
+
 export default router;
