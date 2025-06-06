@@ -2,6 +2,7 @@ import { Profile } from "../models/profile";
 import path from "path";
 import fs from "fs/promises";
 import { Request, Response } from "express";
+import User from "../models/user";
 
 interface ValidationError extends Error {
   errors: Record<string, { message: string }>;
@@ -16,12 +17,13 @@ class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      const user = await Profile.findById(req.user.id).select("-password");
-
+      
+      const user = await User.findById(req.user._id).select("-password");
+      
       if (!user) {
         return res.status(404).json({
           success: false,
-          message: "User not found",
+          message: "User not found , Login again!",
         });
       }
 

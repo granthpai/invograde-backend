@@ -14,6 +14,8 @@ export interface IUser extends Document {
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   careerType: "Developer" | "Designer" | "Both";
+  gender?: "Male" | "Female" | "Other" | "Not Set";
+  isStudent?: "Yes" | "No" | "Not Set";
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   projects: IProject[];
@@ -69,6 +71,16 @@ const UserSchema = new Schema<IUser>(
       type: String,
       enum: ["Developer", "Designer", "Both"],
       required: [true, "Please select a career type"],
+    },
+    gender: {
+      type: String,
+      enum: ["Male", "Female", "Other", "Not Set"],
+      default: "Not Set",
+    },
+    isStudent: {
+      type: String,
+      enum: ["Yes", "No", "Not Set"],
+      default: "Not Set",
     },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
