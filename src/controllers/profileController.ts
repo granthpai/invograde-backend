@@ -457,12 +457,12 @@ export class ProfileController {
         });
       }
       
-      const { degree, fieldOfStudy, institution, year, grade } = req.body;
+      const { degree, fieldOfStudy} = req.body;
 
-      if (!degree || !institution) {
+      if (!degree) {
         return res.status(400).json({
           success: false,
-          message: "Degree and institution are required",
+          message: "Degree is required",
         });
       }
 
@@ -478,12 +478,7 @@ export class ProfileController {
       const newEducation = {
         _id: new mongoose.Types.ObjectId(),
         degree,
-        fieldOfStudy,
-        institution,
-        startDate: year ? new Date(year, 0, 1) : new Date(),
-        current: true,
-        year,
-        grade
+        fieldOfStudy
       };
 
       user.education.push(newEducation);
@@ -513,7 +508,7 @@ export class ProfileController {
       }
       
       const { educationId } = req.params;
-      const { degree, fieldOfStudy, institution, year, grade } = req.body;
+      const { degree, fieldOfStudy } = req.body;
 
       const user = await User.findById(req.user._id);
 
@@ -535,13 +530,7 @@ export class ProfileController {
 
       if (degree) education.degree = degree;
       if (fieldOfStudy) education.fieldOfStudy = fieldOfStudy;
-      if (institution) education.institution = institution;
-      if (year) {
-        education.year = year;
-        education.startDate = new Date(year, 0, 1);
-      }
-      if (grade) education.grade = grade;
-
+      
       await user.save();
 
       res.status(200).json({
@@ -604,36 +593,33 @@ export class ProfileController {
         });
       }
       
-      const { jobTitle, company, duration, description, isCurrentJob } = req.body;
-
+      const { jobTitle, company } = req.body;
+  
       if (!jobTitle || !company) {
         return res.status(400).json({
           success: false,
           message: "Job title and company are required",
         });
       }
-
+  
       const user = await User.findById(req.user._id);
-
+  
       if (!user) {
         return res.status(404).json({
           success: false,
           message: "User not found",
         });
       }
-
+  
       const newWorkExperience = {
+        _id: new mongoose.Types.ObjectId(), 
         company,
-        position: jobTitle,
-        startDate: new Date(),
-        endDate: isCurrentJob ? undefined : new Date(),
-        current: isCurrentJob || false,
-        description,
+        jobTitle,
       };
-
+  
       user.workExperience.push(newWorkExperience);
       await user.save();
-
+  
       res.status(201).json({
         success: true,
         message: "Work experience added successfully",
@@ -658,7 +644,7 @@ export class ProfileController {
       }
       
       const { workExperienceId } = req.params;
-      const { jobTitle, company, duration, description, isCurrentJob } = req.body;
+      const { jobTitle, company } = req.body;
 
       const user = await User.findById(req.user._id);
 
@@ -678,10 +664,8 @@ export class ProfileController {
         });
       }
 
-      if (jobTitle) workExperience.position = jobTitle;
+      if (jobTitle) workExperience.jobTitle = jobTitle;
       if (company) workExperience.company = company;
-      if (description) workExperience.description = description;
-      if (typeof isCurrentJob === 'boolean') workExperience.current = isCurrentJob;
 
       await user.save();
 
@@ -757,57 +741,51 @@ export class ProfileController {
       
       const {
         name,
-        issuingOrganization,
-        issueDate,
-        expiryDate,
-        credentialId,
-        credentialUrl,
-        hasExpiry
+        expiryMonth,
+        expiryYear,
       } = req.body;
-
+  
       if (!name) {
         return res.status(400).json({
           success: false,
           message: "Certification name is required",
         });
       }
-
+  
       const user = await User.findById(req.user._id);
-
+  
       if (!user) {
         return res.status(404).json({
           success: false,
           message: "User not found",
         });
       }
-
+  
       const existingCertification = user.certifications?.find(
-        (cert) => cert.name.toLowerCase() === name.toLowerCase() && 
-                  cert.issuingOrganization?.toLowerCase() === issuingOrganization?.toLowerCase()
+        (cert) => cert.name.toLowerCase() === name.toLowerCase()
       );
-
+  
       if (existingCertification) {
         return res.status(400).json({
           success: false,
           message: "Certification already exists",
         });
       }
-
+  
       if (!user.certifications) {
         user.certifications = [];
       }
-
+  
       const newCertification = {
+        _id: new mongoose.Types.ObjectId(),
         name,
-        issuingOrganization,
-        issueDate: issueDate ? new Date(issueDate) : new Date(),
-        expirationDate: expiryDate ? new Date(expiryDate) : undefined,
-        certificateUrl: credentialUrl,
+        expiryMonth,
+        expiryYear,
       };
-
+  
       user.certifications.push(newCertification);
       await user.save();
-
+  
       res.status(201).json({
         success: true,
         message: "Certification added successfully",
@@ -834,12 +812,8 @@ export class ProfileController {
       const { certificationId } = req.params;
       const {
         name,
-        issuingOrganization,
-        issueDate,
-        expiryDate,
-        credentialId,
-        credentialUrl,
-        hasExpiry
+        expiryMonth,
+        expiryYear,
       } = req.body;
 
       const user = await User.findById(req.user._id);
@@ -861,10 +835,8 @@ export class ProfileController {
       }
 
       if (name) certification.name = name;
-      if (issuingOrganization) certification.issuingOrganization = issuingOrganization;
-      if (issueDate) certification.issueDate = new Date(issueDate);
-      if (expiryDate) certification.expirationDate = new Date(expiryDate);
-      if (credentialUrl) certification.certificateUrl = credentialUrl;
+      if (expiryMonth) certification.expiryMonth = expiryMonth;
+      if (expiryYear) certification.expiryYear = expiryYear;
 
       await user.save();
 
