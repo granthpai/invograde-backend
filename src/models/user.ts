@@ -32,37 +32,25 @@ export interface IUser extends Document {
     s3Url: string;
   },
   certifications: Array<{
+    _id: mongoose.Types.ObjectId;
     name: string;
-    issuingOrganization: string;
-    issueDate: Date;
-    expirationDate?: Date;
-    certificateUrl?: string;
+    expiryMonth: number;
+    expiryYear: number;
   }>;
   skills: Array<{
     _id: mongoose.Types.ObjectId;
     name: string;
-    proficiency?: string;
     yearsOfExperience?: number;
   }>;
   workExperience: Array<{
+    _id: mongoose.Types.ObjectId;
     company: string;
-    position: string;
-    startDate: Date;
-    endDate?: Date;
-    current: boolean;
-    description?: string;
+    jobTitle?: string;
   }>;
   education: Array<{
     _id: mongoose.Types.ObjectId;
-    institution: string;
     degree: string;
     fieldOfStudy?: string;
-    startDate: Date;
-    endDate?: Date;
-    current: boolean;
-    description?: string;
-    year?: number;
-    grade?: string;
   }>;
   createdAt: Date;
   updatedAt: Date;
@@ -84,10 +72,6 @@ const UserSchema = new Schema<IUser>({
     _id: {
       type: mongoose.Schema.Types.ObjectId
     },
-    institution: {
-      type: String,
-      required: true
-    },
     degree: {
       type: String,
       required: true
@@ -95,51 +79,19 @@ const UserSchema = new Schema<IUser>({
     fieldOfStudy: {
       type: String
     },
-    startDate: {
-      type: Date,
-      required: true
-    },
-    endDate: {
-      type: Date
-    },
-    current: {
-      type: Boolean,
-      default: false
-    },
-    description: {
-      type: String
-    },
-    year: {
-      type: Number
-    },
-    grade: {
-      type: String
-    }
   }],
   workExperience: [{
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+    },
     company: {
       type: String,
       required: true,
     },
-    position: {
+    jobTitle: {
       type: String,
       required: true,
-    },
-    startDate: {
-      type: Date,
-      required: true,
-    },
-    endDate: {
-      type: Date,
-      required: false,
-    },
-    current: {
-      type: Boolean,
-      default: false,
-    },
-    description: {
-      type: String,
-      required: false,
     },
   }],
   emailVerificationToken: {
@@ -196,7 +148,6 @@ const UserSchema = new Schema<IUser>({
       type: String,
       required: true,
     },
-    proficiency: String,
     yearsOfExperience: Number,
   }],
 }, {
