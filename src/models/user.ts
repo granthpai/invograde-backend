@@ -32,23 +32,20 @@ export interface IUser extends Document {
     s3Url: string;
   };
   certifications: Array<{
-    _id: mongoose.Types.ObjectId;
     name: string;
-    expiryMonth: number;
-    expiryYear: number;
+    expiryMonth: string;
+    expiryYear: string;
+    doesNotExpire: boolean;
   }>;
   skills: Array<{
-    _id: mongoose.Types.ObjectId;
     name: string;
     yearsOfExperience?: number;
   }>;
   workExperience: Array<{
-    _id: mongoose.Types.ObjectId;
     company: string;
     jobTitle?: string;
   }>;
   education: Array<{
-    _id: mongoose.Types.ObjectId;
     degree: string;
     fieldOfStudy?: string;
   }>;
@@ -71,9 +68,6 @@ const UserSchema = new Schema<IUser>(
     },
     education: [
       {
-        _id: {
-          type: mongoose.Schema.Types.ObjectId,
-        },
         degree: {
           type: String,
           required: true,
@@ -85,16 +79,32 @@ const UserSchema = new Schema<IUser>(
     ],
     workExperience: [
       {
-        _id: {
-          type: mongoose.Schema.Types.ObjectId,
-          required: true,
-        },
         company: {
           type: String,
           required: true,
         },
         jobTitle: {
           type: String,
+          required: true,
+        },
+      },
+    ],
+    certifications: [
+      {
+        name: {
+          type: String,
+          required: true,
+        },
+        expiryMonth: {
+          type: String,
+          required: true,
+        },
+        expiryYear: {
+          type: String,
+          required: true,
+        },
+        doesNotExpire: {
+          type: Boolean,
           required: true,
         },
       },
@@ -171,10 +181,6 @@ const UserSchema = new Schema<IUser>(
     ],
     skills: [
       {
-        _id: {
-          type: mongoose.Schema.Types.ObjectId,
-          required: true,
-        },
         name: {
           type: String,
           required: true,

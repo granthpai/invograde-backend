@@ -160,7 +160,6 @@ export class ProfileController {
         });
       }
 
-
       const allowedMimeTypes = [
         "application/pdf",
         "application/msword",
@@ -306,27 +305,40 @@ export class ProfileController {
       });
     }
   }
-
-  async addSkill(req: Request, res: Response) {
+  async updateResumeSections(req: Request, res: Response) {
     try {
       if (!req.user) {
         return res.status(401).json({
           success: false,
-          message: "Unauthorized: Login Again",
+          message: "Unauthorized: Please login again",
         });
       }
 
-      const { name, yearsOfExperience } = req.body;
+      let { skills, education, workExperience, certifications } = req.body;
 
-      if (!name) {
+      if (skills && !Array.isArray(skills)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Skills must be an array" });
+      }
+      if (education && !Array.isArray(education)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Education must be an array" });
+      }
+      if (workExperience && !Array.isArray(workExperience)) {
         return res.status(400).json({
           success: false,
-          message: "Skill name is required",
+          message: "Work experience must be an array",
         });
+      }
+      if (certifications && !Array.isArray(certifications)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Certifications must be an array" });
       }
 
       const user = await User.findById(req.user._id);
-
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -334,580 +346,53 @@ export class ProfileController {
         });
       }
 
-      const existingSkill = user.skills.find(
-        (skill) => skill.name.toLowerCase() === name.toLowerCase()
-      );
-
-      if (existingSkill) {
-        return res.status(400).json({
-          success: false,
-          message: "Skill already exists",
-        });
+      if (skills) {
+        user.skills = skills.map((skill: any) => ({
+          name: skill.name,
+          yearsOfExperience: skill.experience,
+        }));
       }
 
-      const newSkill = {
-        _id: new mongoose.Types.ObjectId(),
-        name,
-        yearsOfExperience: yearsOfExperience || 0,
-      };
-
-      user.skills.push(newSkill);
-      await user.save();
-
-      res.status(201).json({
-        success: true,
-        message: "Skill added successfully",
-        data: user.skills,
-      });
-    } catch (error) {
-      console.error("Add skill error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-      });
-    }
-  }
-
-  async updateSkill(req: Request, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized: Login Again",
-        });
+      if (education) {
+        user.education = education.map((edu: any) => ({
+          degree: edu.educationLevel,
+          fieldOfStudy: edu.fieldOfStudy,
+        }));
       }
 
-      const { skillId } = req.params;
-      const { name, yearsOfExperience } = req.body;
-
-      const user = await User.findById(req.user._id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
+      if (workExperience) {
+        user.workExperience = workExperience.map((work: any) => ({
+          jobTitle: work.jobTitle,
+          company: work.companyName,
+        }));
       }
 
-      const skill = user.skills.find(
-        (skill) => skill._id.toString() === skillId
-      );
-
-      if (!skill) {
-        return res.status(404).json({
-          success: false,
-          message: "Skill not found",
-        });
+      if (certifications) {
+        user.certifications = certifications.map((cert: any) => ({
+          name: cert.name,
+          expiryMonth: cert.expiryMonth,
+          expiryYear: cert.expiryYear,
+          doesNotExpire: Boolean(cert.doesNotExpire),
+        }));
       }
-
-      if (name) skill.name = name;
-      if (yearsOfExperience !== undefined)
-        skill.yearsOfExperience = yearsOfExperience;
 
       await user.save();
 
       res.status(200).json({
         success: true,
-        message: "Skill updated successfully",
-        data: user.skills,
+        message: "Resume sections updated successfully",
+        data: {
+          skills: user.skills,
+          education: user.education,
+          workExperience: user.workExperience,
+          certifications: user.certifications,
+        },
       });
     } catch (error) {
-      console.error("Update skill error:", error);
+      console.error("Update Resume Error:", error);
       res.status(500).json({
         success: false,
-        message: "Server error",
-      });
-    }
-  }
-
-  async deleteSkill(req: Request, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized: Login Again",
-        });
-      }
-
-      const { skillId } = req.params;
-
-      const user = await User.findById(req.user._id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      user.skills = user.skills.filter(
-        (skill) => skill._id.toString() !== skillId
-      );
-      await user.save();
-
-      res.status(200).json({
-        success: true,
-        message: "Skill deleted successfully",
-        data: user.skills,
-      });
-    } catch (error) {
-      console.error("Delete skill error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-      });
-    }
-  }
-
-  async addEducation(req: Request, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized: Login Again",
-        });
-      }
-
-      const { degree, fieldOfStudy } = req.body;
-
-      if (!degree) {
-        return res.status(400).json({
-          success: false,
-          message: "Degree is required",
-        });
-      }
-
-      const user = await User.findById(req.user._id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      const newEducation = {
-        _id: new mongoose.Types.ObjectId(),
-        degree,
-        fieldOfStudy,
-      };
-
-      user.education.push(newEducation);
-      await user.save();
-
-      res.status(201).json({
-        success: true,
-        message: "Education added successfully",
-        data: user.education,
-      });
-    } catch (error) {
-      console.error("Add education error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-      });
-    }
-  }
-
-  async updateEducation(req: Request, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized: Login Again",
-        });
-      }
-
-      const { educationId } = req.params;
-      const { degree, fieldOfStudy } = req.body;
-
-      const user = await User.findById(req.user._id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      const education = user.education.find(
-        (ed) => ed._id.toString() === educationId
-      );
-
-      if (!education) {
-        return res.status(404).json({
-          success: false,
-          message: "Education record not found",
-        });
-      }
-
-      if (degree) education.degree = degree;
-      if (fieldOfStudy) education.fieldOfStudy = fieldOfStudy;
-
-      await user.save();
-
-      res.status(200).json({
-        success: true,
-        message: "Education updated successfully",
-        data: user.education,
-      });
-    } catch (error) {
-      console.error("Update education error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-      });
-    }
-  }
-
-  async deleteEducation(req: Request, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized: Login Again",
-        });
-      }
-
-      const { educationId } = req.params;
-
-      const user = await User.findById(req.user._id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      user.education = user.education.filter(
-        (education) => education._id.toString() !== educationId.toString()
-      );
-      await user.save();
-
-      res.status(200).json({
-        success: true,
-        message: "Education deleted successfully",
-        data: user.education,
-      });
-    } catch (error) {
-      console.error("Delete education error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-      });
-    }
-  }
-
-  async addWorkExperience(req: Request, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized: Login Again",
-        });
-      }
-
-      const { jobTitle, company } = req.body;
-
-      if (!jobTitle || !company) {
-        return res.status(400).json({
-          success: false,
-          message: "Job title and company are required",
-        });
-      }
-
-      const user = await User.findById(req.user._id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      const newWorkExperience = {
-        _id: new mongoose.Types.ObjectId(),
-        company,
-        jobTitle,
-      };
-
-      user.workExperience.push(newWorkExperience);
-      await user.save();
-
-      res.status(201).json({
-        success: true,
-        message: "Work experience added successfully",
-        data: user.workExperience,
-      });
-    } catch (error) {
-      console.error("Add work experience error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-      });
-    }
-  }
-
-  async updateWorkExperience(req: Request, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized: Login Again",
-        });
-      }
-
-      const { workExperienceId } = req.params;
-      const { jobTitle, company } = req.body;
-
-      const user = await User.findById(req.user._id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      const workExperience = user.workExperience.find(
-        (exp) => exp._id?.toString() === workExperienceId
-      );
-
-      if (!workExperience) {
-        return res.status(404).json({
-          success: false,
-          message: "Work experience not found",
-        });
-      }
-
-      if (jobTitle) workExperience.jobTitle = jobTitle;
-      if (company) workExperience.company = company;
-
-      await user.save();
-
-      res.status(200).json({
-        success: true,
-        message: "Work experience updated successfully",
-        data: user.workExperience,
-      });
-    } catch (error) {
-      console.error("Update work experience error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-      });
-    }
-  }
-
-  async deleteWorkExperience(req: Request, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized: Login Again",
-        });
-      }
-
-      const { workExperienceId } = req.params;
-
-      const user = await User.findById(req.user._id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      const updatedUser = await User.findByIdAndUpdate(
-        req.user._id,
-        { $pull: { workExperience: { _id: workExperienceId } } },
-        { new: true }
-      );
-
-      if (!updatedUser) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      res.status(200).json({
-        success: true,
-        message: "Work experience deleted successfully",
-        data: updatedUser.workExperience,
-      });
-    } catch (error) {
-      console.error("Delete work experience error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-      });
-    }
-  }
-
-  async addCertification(req: Request, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized: Login Again",
-        });
-      }
-
-      const { name, expiryMonth, expiryYear } = req.body;
-
-      if (!name) {
-        return res.status(400).json({
-          success: false,
-          message: "Certification name is required",
-        });
-      }
-
-      const user = await User.findById(req.user._id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      const existingCertification = user.certifications?.find(
-        (cert) => cert.name.toLowerCase() === name.toLowerCase()
-      );
-
-      if (existingCertification) {
-        return res.status(400).json({
-          success: false,
-          message: "Certification already exists",
-        });
-      }
-
-      if (!user.certifications) {
-        user.certifications = [];
-      }
-
-      const newCertification = {
-        _id: new mongoose.Types.ObjectId(),
-        name,
-        expiryMonth,
-        expiryYear,
-      };
-
-      user.certifications.push(newCertification);
-      await user.save();
-
-      res.status(201).json({
-        success: true,
-        message: "Certification added successfully",
-        data: user.certifications,
-      });
-    } catch (error) {
-      console.error("Add certification error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-      });
-    }
-  }
-
-  async updateCertification(req: Request, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized: Login Again",
-        });
-      }
-
-      const { certificationId } = req.params;
-      const { name, expiryMonth, expiryYear } = req.body;
-
-      const user = await User.findById(req.user._id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      const certification = user.certifications?.find(
-        (cert) => cert._id?.toString() === certificationId
-      );
-
-      if (!certification) {
-        return res.status(404).json({
-          success: false,
-          message: "Certification not found",
-        });
-      }
-
-      if (name) certification.name = name;
-      if (expiryMonth) certification.expiryMonth = expiryMonth;
-      if (expiryYear) certification.expiryYear = expiryYear;
-
-      await user.save();
-
-      res.status(200).json({
-        success: true,
-        message: "Certification updated successfully",
-        data: user.certifications,
-      });
-    } catch (error) {
-      console.error("Update certification error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-      });
-    }
-  }
-
-  async deleteCertification(req: Request, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized: Login Again",
-        });
-      }
-
-      const { certificationId } = req.params;
-
-      const user = await User.findById(req.user._id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      if (!user.certifications) {
-        return res.status(404).json({
-          success: false,
-          message: "No certifications found",
-        });
-      }
-
-      const updatedUser = await User.findByIdAndUpdate(
-        req.user._id,
-        { $pull: { certifications: { _id: certificationId } } },
-        { new: true }
-      );
-
-      res.status(200).json({
-        success: true,
-        message: "Certification deleted successfully",
-        data: updatedUser?.certifications || [],
-      });
-    } catch (error) {
-      console.error("Delete certification error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
+        message: "Server error while updating resume sections",
       });
     }
   }
