@@ -99,6 +99,15 @@ const UserSchema = new Schema<IUser>(
         },
       },
     ],
+    resume: {
+      filename: { type: String },
+      originalName: { type: String },
+      mimetype: { type: String },
+      size: { type: Number },
+      uploadDate: { type: Date },
+      s3Key: { type: String },
+      s3Url: { type: String },
+    },
     emailVerificationToken: {
       type: String,
       required: false,

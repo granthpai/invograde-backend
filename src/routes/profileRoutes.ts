@@ -1,5 +1,5 @@
 import express, { RequestHandler } from "express";
-import {profileController} from "../controllers/profileController";
+import { profileController } from "../controllers/profileController";
 import { protect } from "../middlewares/authMiddleware";
 import {
   validateProfileUpdate,
@@ -20,7 +20,7 @@ router.put(
 router.post(
   "/upload/resume",
   upload.single("resume"),
-  profileController.uploadResume as RequestHandler
+  profileController.uploadResume.bind(profileController) as RequestHandler
 );
 router.post(
   "/upload/profile-picture",

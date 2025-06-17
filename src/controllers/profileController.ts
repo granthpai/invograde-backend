@@ -125,7 +125,6 @@ export class ProfileController {
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: "public-read",
     };
 
     const result = await s3.upload(uploadParams).promise();
@@ -160,6 +159,7 @@ export class ProfileController {
           message: "No resume file provided",
         });
       }
+
 
       const allowedMimeTypes = [
         "application/pdf",
