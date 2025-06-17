@@ -14,7 +14,7 @@ export interface IUser extends Document {
   password: string;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
-  careerType: "Developer" | "Designer" | "Both";
+  careerType: string;
   gender?: "Male" | "Female" | "Other" | "Not Set";
   isStudent?: "Yes" | "No" | "Not Set";
   resetPasswordToken?: string;
@@ -30,7 +30,7 @@ export interface IUser extends Document {
     uploadDate: Date;
     s3Key: string;
     s3Url: string;
-  },
+  };
   certifications: Array<{
     _id: mongoose.Types.ObjectId;
     name: string;
@@ -59,100 +59,125 @@ export interface IUser extends Document {
   emailVerificationToken?: string;
 }
 
-const UserSchema = new Schema<IUser>({
-  username: {
-    type: String,
-    required: [true, "Please add a username"],
-    unique: true,
-    trim: true,
-    minlength: [3, "Username must be at least 3 characters long"],
-    maxlength: [30, "Username cannot be more than 30 characters"],
-  },
-  education: [{
-    _id: {
-      type: mongoose.Schema.Types.ObjectId
-    },
-    degree: {
+const UserSchema = new Schema<IUser>(
+  {
+    username: {
       type: String,
-      required: true
+      required: [true, "Please add a username"],
+      unique: true,
+      trim: true,
+      minlength: [3, "Username must be at least 3 characters long"],
+      maxlength: [30, "Username cannot be more than 30 characters"],
     },
-    fieldOfStudy: {
-      type: String
-    },
-  }],
-  workExperience: [{
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-    },
-    company: {
+    education: [
+      {
+        _id: {
+          type: mongoose.Schema.Types.ObjectId,
+        },
+        degree: {
+          type: String,
+          required: true,
+        },
+        fieldOfStudy: {
+          type: String,
+        },
+      },
+    ],
+    workExperience: [
+      {
+        _id: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: true,
+        },
+        company: {
+          type: String,
+          required: true,
+        },
+        jobTitle: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
+    emailVerificationToken: {
       type: String,
-      required: true,
+      required: false,
     },
-    jobTitle: {
+    email: {
       type: String,
-      required: true,
+      required: [true, "Please add an email"],
+      unique: true,
+      match: [
+        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+        "Please add a valid email",
+      ],
     },
-  }],
-  emailVerificationToken: {
-    type: String,
-    required: false,
-  },
-  email: {
-    type: String,
-    required: [true, "Please add an email"],
-    unique: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, "Please add a valid email"],
-  },
-  phoneNumber: {
-    type: String,
-    unique: true,
-    sparse: true,
-    match: [/^\+[1-9]\d{1,14}$/, "Please add a valid phone number in E.164 format"],
-  },
-  password: {
-    type: String,
-    required: [true, "Please add a password"],
-    minlength: [6, "Password must be at least 6 characters long"],
-    select: false,
-  },
-  isEmailVerified: {
-    type: Boolean,
-    default: false,
-  },
-  isPhoneVerified: {
-    type: Boolean,
-    default: false,
-  },
-  careerType: {
-    type: String,
-    enum: ["Developer", "Designer", "Both"],
-    required: [true, "Please select a career type"],
-  },
-  resetPasswordToken: {
-    type: String,
-  },
-  resetPasswordExpires: {
-    type: Date,
-  },
-  projects: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Project",
-  }],
-  skills: [{
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-    },
-    name: {
+    phoneNumber: {
       type: String,
-      required: true,
+      unique: true,
+      sparse: true,
+      match: [
+        /^\+[1-9]\d{1,14}$/,
+        "Please add a valid phone number in E.164 format",
+      ],
     },
-    yearsOfExperience: Number,
-  }],
-}, {
-  timestamps: true,
-});
+    password: {
+      type: String,
+      required: [true, "Please add a password"],
+      minlength: [6, "Password must be at least 6 characters long"],
+      select: false,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isPhoneVerified: {
+      type: Boolean,
+      default: false,
+    },
+    careerType: {
+      type: String,
+      // enum: ["Developer", "Designer", "Both"],
+      required: [true, "Please select a career type"],
+    },
+    isStudent: {
+      type: String,
+      default: "Not Set",
+    },
+    gender: {
+      type: String,
+      default: "Not Set",
+    },
+    resetPasswordToken: {
+      type: String,
+    },
+    resetPasswordExpires: {
+      type: Date,
+    },
+    projects: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Project",
+      },
+    ],
+    skills: [
+      {
+        _id: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: true,
+        },
+        name: {
+          type: String,
+          required: true,
+        },
+        yearsOfExperience: Number,
+      },
+    ],
+  },
+  {
+    timestamps: true,
+  }
+);
 
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {

@@ -8,10 +8,10 @@ import mongoose from "mongoose";
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION || 'us-east-1',
+  region: process.env.AWS_REGION || "us-east-1",
 });
 
-const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'your-bucket-name';
+const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || "your-bucket-name";
 
 interface ValidationError extends Error {
   errors: Record<string, { message: string }>;
@@ -26,9 +26,9 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
+
       const user = await User.findById(req.user._id).select("-password");
-      
+
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -59,21 +59,21 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
+
       const { fullName, specialization, gender, isStudent } = req.body;
 
-      const updateData: { [key: string]: any } = {};
-      if (fullName) updateData["fullName"] = fullName;
-      if (specialization) updateData["specialization"] = specialization;
-      if (gender) updateData["gender"] = gender;
-      if (typeof isStudent === "boolean" || typeof isStudent === "string") {
-        updateData["isStudent"] = isStudent;
-      }
-
-      const user = await User.findByIdAndUpdate(req.user._id, updateData, {
-        new: true,
-        runValidators: true,
-      }).select("-password");
+      const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+          username: fullName,
+          careerType: specialization,
+          gender,
+          isStudent,
+        },
+        {
+          new: true,
+        }
+      ).select("-password");
 
       if (!user) {
         return res.status(404).json({
@@ -112,7 +112,10 @@ export class ProfileController {
     }
   }
 
-  private async uploadToS3(file: Express.Multer.File, folder: string): Promise<{ key: string; url: string }> {
+  private async uploadToS3(
+    file: Express.Multer.File,
+    folder: string
+  ): Promise<{ key: string; url: string }> {
     const fileExtension = path.extname(file.originalname);
     const fileName = `${uuidv4()}${fileExtension}`;
     const key = `${folder}/${fileName}`;
@@ -122,14 +125,14 @@ export class ProfileController {
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: 'public-read',
+      ACL: "public-read",
     };
 
     const result = await s3.upload(uploadParams).promise();
-    
+
     return {
       key: key,
-      url: result.Location
+      url: result.Location,
     };
   }
 
@@ -159,9 +162,9 @@ export class ProfileController {
       }
 
       const allowedMimeTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       ];
 
       if (!allowedMimeTypes.includes(req.file.mimetype)) {
@@ -194,7 +197,7 @@ export class ProfileController {
         }
       }
 
-      const { key, url } = await this.uploadToS3(req.file, 'resumes');
+      const { key, url } = await this.uploadToS3(req.file, "resumes");
 
       const resumeData = {
         filename: req.file.originalname,
@@ -242,11 +245,11 @@ export class ProfileController {
       }
 
       const allowedMimeTypes = [
-        'image/jpeg',
-        'image/jpg',
-        'image/png',
-        'image/gif',
-        'image/webp'
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
       ];
 
       if (!allowedMimeTypes.includes(req.file.mimetype)) {
@@ -275,11 +278,14 @@ export class ProfileController {
         try {
           await this.deleteFromS3(user.profilePicture);
         } catch (deleteError) {
-          console.error("Error deleting old profile picture from S3:", deleteError);
+          console.error(
+            "Error deleting old profile picture from S3:",
+            deleteError
+          );
         }
       }
 
-      const { key, url } = await this.uploadToS3(req.file, 'profile-pictures');
+      const { key, url } = await this.uploadToS3(req.file, "profile-pictures");
 
       user.profilePicture = url;
       await user.save();
@@ -309,7 +315,7 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
+
       const { name, yearsOfExperience } = req.body;
 
       if (!name) {
@@ -342,9 +348,9 @@ export class ProfileController {
       const newSkill = {
         _id: new mongoose.Types.ObjectId(),
         name,
-        yearsOfExperience: yearsOfExperience || 0
+        yearsOfExperience: yearsOfExperience || 0,
       };
-      
+
       user.skills.push(newSkill);
       await user.save();
 
@@ -370,7 +376,7 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
+
       const { skillId } = req.params;
       const { name, yearsOfExperience } = req.body;
 
@@ -383,7 +389,9 @@ export class ProfileController {
         });
       }
 
-      const skill = user.skills.find(skill => skill._id.toString() === skillId);
+      const skill = user.skills.find(
+        (skill) => skill._id.toString() === skillId
+      );
 
       if (!skill) {
         return res.status(404).json({
@@ -393,7 +401,8 @@ export class ProfileController {
       }
 
       if (name) skill.name = name;
-      if (yearsOfExperience !== undefined) skill.yearsOfExperience = yearsOfExperience;
+      if (yearsOfExperience !== undefined)
+        skill.yearsOfExperience = yearsOfExperience;
 
       await user.save();
 
@@ -419,7 +428,7 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
+
       const { skillId } = req.params;
 
       const user = await User.findById(req.user._id);
@@ -431,7 +440,9 @@ export class ProfileController {
         });
       }
 
-      user.skills = user.skills.filter(skill => skill._id.toString() !== skillId);
+      user.skills = user.skills.filter(
+        (skill) => skill._id.toString() !== skillId
+      );
       await user.save();
 
       res.status(200).json({
@@ -456,8 +467,8 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
-      const { degree, fieldOfStudy} = req.body;
+
+      const { degree, fieldOfStudy } = req.body;
 
       if (!degree) {
         return res.status(400).json({
@@ -478,7 +489,7 @@ export class ProfileController {
       const newEducation = {
         _id: new mongoose.Types.ObjectId(),
         degree,
-        fieldOfStudy
+        fieldOfStudy,
       };
 
       user.education.push(newEducation);
@@ -506,7 +517,7 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
+
       const { educationId } = req.params;
       const { degree, fieldOfStudy } = req.body;
 
@@ -519,7 +530,9 @@ export class ProfileController {
         });
       }
 
-      const education = user.education.find(ed => ed._id.toString() === educationId);
+      const education = user.education.find(
+        (ed) => ed._id.toString() === educationId
+      );
 
       if (!education) {
         return res.status(404).json({
@@ -530,7 +543,7 @@ export class ProfileController {
 
       if (degree) education.degree = degree;
       if (fieldOfStudy) education.fieldOfStudy = fieldOfStudy;
-      
+
       await user.save();
 
       res.status(200).json({
@@ -555,7 +568,7 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
+
       const { educationId } = req.params;
 
       const user = await User.findById(req.user._id);
@@ -567,7 +580,9 @@ export class ProfileController {
         });
       }
 
-      user.education = user.education.filter(education => education._id.toString() !== educationId.toString());
+      user.education = user.education.filter(
+        (education) => education._id.toString() !== educationId.toString()
+      );
       await user.save();
 
       res.status(200).json({
@@ -592,34 +607,34 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
+
       const { jobTitle, company } = req.body;
-  
+
       if (!jobTitle || !company) {
         return res.status(400).json({
           success: false,
           message: "Job title and company are required",
         });
       }
-  
+
       const user = await User.findById(req.user._id);
-  
+
       if (!user) {
         return res.status(404).json({
           success: false,
           message: "User not found",
         });
       }
-  
+
       const newWorkExperience = {
-        _id: new mongoose.Types.ObjectId(), 
+        _id: new mongoose.Types.ObjectId(),
         company,
         jobTitle,
       };
-  
+
       user.workExperience.push(newWorkExperience);
       await user.save();
-  
+
       res.status(201).json({
         success: true,
         message: "Work experience added successfully",
@@ -642,7 +657,7 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
+
       const { workExperienceId } = req.params;
       const { jobTitle, company } = req.body;
 
@@ -655,7 +670,9 @@ export class ProfileController {
         });
       }
 
-      const workExperience = user.workExperience.find(exp => exp._id?.toString() === workExperienceId);
+      const workExperience = user.workExperience.find(
+        (exp) => exp._id?.toString() === workExperienceId
+      );
 
       if (!workExperience) {
         return res.status(404).json({
@@ -691,7 +708,7 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
+
       const { workExperienceId } = req.params;
 
       const user = await User.findById(req.user._id);
@@ -738,54 +755,50 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
-      const {
-        name,
-        expiryMonth,
-        expiryYear,
-      } = req.body;
-  
+
+      const { name, expiryMonth, expiryYear } = req.body;
+
       if (!name) {
         return res.status(400).json({
           success: false,
           message: "Certification name is required",
         });
       }
-  
+
       const user = await User.findById(req.user._id);
-  
+
       if (!user) {
         return res.status(404).json({
           success: false,
           message: "User not found",
         });
       }
-  
+
       const existingCertification = user.certifications?.find(
         (cert) => cert.name.toLowerCase() === name.toLowerCase()
       );
-  
+
       if (existingCertification) {
         return res.status(400).json({
           success: false,
           message: "Certification already exists",
         });
       }
-  
+
       if (!user.certifications) {
         user.certifications = [];
       }
-  
+
       const newCertification = {
         _id: new mongoose.Types.ObjectId(),
         name,
         expiryMonth,
         expiryYear,
       };
-  
+
       user.certifications.push(newCertification);
       await user.save();
-  
+
       res.status(201).json({
         success: true,
         message: "Certification added successfully",
@@ -808,13 +821,9 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
+
       const { certificationId } = req.params;
-      const {
-        name,
-        expiryMonth,
-        expiryYear,
-      } = req.body;
+      const { name, expiryMonth, expiryYear } = req.body;
 
       const user = await User.findById(req.user._id);
 
@@ -825,7 +834,9 @@ export class ProfileController {
         });
       }
 
-      const certification = user.certifications?.find(cert => cert._id?.toString() === certificationId);
+      const certification = user.certifications?.find(
+        (cert) => cert._id?.toString() === certificationId
+      );
 
       if (!certification) {
         return res.status(404).json({
@@ -862,7 +873,7 @@ export class ProfileController {
           message: "Unauthorized: Login Again",
         });
       }
-      
+
       const { certificationId } = req.params;
 
       const user = await User.findById(req.user._id);
