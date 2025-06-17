@@ -349,13 +349,13 @@ export class ProfileController {
       if (skills) {
         user.skills = skills.map((skill: any) => ({
           name: skill.name,
-          yearsOfExperience: skill.experience,
+          yearsOfExperience: skill.yearsOfExperience,
         }));
       }
 
       if (education) {
         user.education = education.map((edu: any) => ({
-          degree: edu.educationLevel,
+          degree: edu.degree,
           fieldOfStudy: edu.fieldOfStudy,
         }));
       }
@@ -363,7 +363,7 @@ export class ProfileController {
       if (workExperience) {
         user.workExperience = workExperience.map((work: any) => ({
           jobTitle: work.jobTitle,
-          company: work.companyName,
+          company: work.company,
         }));
       }
 
@@ -394,6 +394,34 @@ export class ProfileController {
         success: false,
         message: "Server error while updating resume sections",
       });
+    }
+  }
+
+  async getResumeData(req: Request, res: Response) {
+    try {
+      const userId = req.user?._id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await User.findById(userId).select(
+        "skills education workExperience certifications"
+      );
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.status(200).json({
+        skills: user.skills || [],
+        education: user.education || [],
+        workExperience: user.workExperience || [],
+        certifications: user.certifications || [],
+      });
+    } catch (err) {
+      console.error("Error fetching resume data:", err);
+      res.status(500).json({ message: "Server error" });
     }
   }
 

@@ -28,6 +28,10 @@ router.post(
   "/resume/update-sections",
   profileController.updateResumeSections as RequestHandler
 );
+router.get(
+  "/resume/get-sections",
+  profileController.getResumeData as RequestHandler
+);
 router.delete("/resume", profileController.deleteResume as RequestHandler);
 
 export default router;
