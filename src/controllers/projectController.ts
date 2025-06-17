@@ -515,7 +515,7 @@ export class ProjectController {
       const sortBy = (req.query.sortBy as string) || "createdAt";
       const sortOrder = (req.query.sortOrder as string) || "desc";
 
-      let query: any = { isPublic: true };
+      let query: any = {};
 
       if (domain) {
         query.domain = domain;
@@ -537,6 +537,8 @@ export class ProjectController {
         .sort(sortObject)
         .skip(skip)
         .limit(limit);
+
+      console.log("projects", projects);
 
       const totalProjects = await Project.countDocuments(query);
       const totalPages = Math.ceil(totalProjects / limit);

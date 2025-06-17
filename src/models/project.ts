@@ -45,6 +45,7 @@ export const ProjectSchema: Schema = new Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
     },
     thumbnail: {
       type: String,
