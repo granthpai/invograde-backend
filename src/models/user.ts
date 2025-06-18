@@ -66,6 +66,9 @@ const UserSchema = new Schema<IUser>(
       minlength: [3, "Username must be at least 3 characters long"],
       maxlength: [30, "Username cannot be more than 30 characters"],
     },
+    profilePicture: {
+      type: String,
+    },
     education: [
       {
         degree: {

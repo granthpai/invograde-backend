@@ -55,6 +55,14 @@ router.post(
   validateRequest,
   authController.login
 );
+router.post(
+  "/google-login",
+  body("name").notEmpty(),
+  body("email").notEmpty(),
+  body("photoURL").notEmpty(),
+  validateRequest,
+  authController.googleLogin
+);
 
 router.get("/me", protect, authController.getMe);
 

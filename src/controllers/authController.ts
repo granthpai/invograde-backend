@@ -6,6 +6,8 @@ import VerificationCode from "../models/verificationCode";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../config/email";
 import { sendVerificationSMS } from "../config/sms";
 import { generateNumCode } from "../utils/generateVerificationCode";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
 class AuthController {
   async checkExists(req: Request, res: Response): Promise<void> {
     try {
@@ -430,6 +432,68 @@ class AuthController {
       res.status(500).json({
         success: false,
         message: "An error occurred while logging out",
+      });
+    }
+  }
+
+  async googleLogin(req: Request, res: Response): Promise<void> {
+    try {
+      const { name, email, photoURL } = req.body;
+
+      if (!email || !name || !photoURL) {
+        res.status(400).json({
+          success: false,
+          message: "Missing Google user data",
+        });
+        return;
+      }
+
+      let user = await User.findOne({ email }).select("+password");
+
+      if (!user) {
+        const randomPassword = crypto.randomBytes(12).toString("hex");
+        const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+        user = await User.create({
+          email,
+          password: hashedPassword,
+          username: name,
+          isEmailVerified: true,
+          isPhoneVerified: false,
+          careerType: "Not Set",
+          profileImage: photoURL,
+        });
+      }
+
+      if (!user.username || !user.careerType) {
+        res.status(400).json({
+          success: false,
+          message: "Please complete your profile",
+          userId: user._id,
+        });
+        return;
+      }
+
+      const { password: _, ...userWithoutPassword } = user.toObject();
+      const token = user.getSignedJwtToken();
+
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      });
+
+      res.status(200).json({
+        success: true,
+        token,
+        user: userWithoutPassword,
+      });
+    } catch (error) {
+      console.error("Google Login Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: (error as Error).message,
       });
     }
   }
