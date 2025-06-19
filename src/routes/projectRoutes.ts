@@ -34,10 +34,7 @@ router.post("/upload/presigned-url", protect, (req, res) =>
 );
 
 router.post("/:projectId/like", protect, (req, res) =>
-  projectController.likeProject(req, res)
-);
-router.delete("/:projectId/like", protect, (req, res) =>
-  projectController.unlikeProject(req, res)
+  projectController.toggleProjectLike(req, res)
 );
 
 export default router;

@@ -384,7 +384,7 @@ export class ProjectController {
     }
   }
 
-  async likeProject(req: Request, res: Response): Promise<void> {
+  async toggleProjectLike(req: Request, res: Response): Promise<void> {
     try {
       const { projectId } = req.params;
       const userId = req.user?.id as string;
@@ -404,102 +404,49 @@ export class ProjectController {
         return;
       }
 
-      const existingProject = await Project.findById(projectId);
-      if (!existingProject) {
+      const project = await Project.findById(projectId);
+      if (!project) {
         res.status(404).json({ message: "Project not found" });
         return;
       }
 
-      if (existingProject.likesBy && existingProject.likesBy.includes(userId)) {
-        res.status(400).json({ message: "Project already liked by user" });
-        return;
-      }
+      const alreadyLiked = project.likesBy?.includes(userId);
+
+      const update = alreadyLiked
+        ? {
+            $inc: { likes: -1 },
+            $pull: { likesBy: userId },
+          }
+        : {
+            $inc: { likes: 1 },
+            $addToSet: { likesBy: userId },
+          };
 
       const updatedProject = await Project.findByIdAndUpdate(
         projectId,
+        update,
         {
-          $inc: { likes: 1 },
-          $addToSet: { likesBy: userId },
-        },
-        { new: true }
+          new: true,
+        }
       );
 
       if (!updatedProject) {
-        res.status(404).json({ message: "Project not found" });
+        res.status(404).json({ message: "Project not found after update" });
         return;
       }
 
       res.status(200).json({
-        message: "Project liked successfully",
+        message: alreadyLiked
+          ? "Project unliked successfully"
+          : "Project liked successfully",
+        liked: !alreadyLiked,
         likes: updatedProject.likes,
         project: updatedProject,
       });
     } catch (error) {
-      console.error("Error liking project:", error);
+      console.error("Error toggling like:", error);
       res.status(500).json({
-        message: "Error liking project",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }
-
-  async unlikeProject(req: Request, res: Response): Promise<void> {
-    try {
-      const { projectId } = req.params;
-      const userId = req.user?.id as string;
-
-      if (!projectId) {
-        res.status(400).json({ message: "Project ID is required" });
-        return;
-      }
-
-      if (!mongoose.Types.ObjectId.isValid(projectId)) {
-        res.status(400).json({ message: "Invalid project ID" });
-        return;
-      }
-
-      if (!userId) {
-        res.status(401).json({ message: "Unauthorized" });
-        return;
-      }
-
-      const existingProject = await Project.findById(projectId);
-      if (!existingProject) {
-        res.status(404).json({ message: "Project not found" });
-        return;
-      }
-
-      if (
-        !existingProject.likesBy ||
-        !existingProject.likesBy.includes(userId)
-      ) {
-        res.status(400).json({ message: "Project not liked by user" });
-        return;
-      }
-
-      const updatedProject = await Project.findByIdAndUpdate(
-        projectId,
-        {
-          $inc: { likes: -1 },
-          $pull: { likesBy: userId },
-        },
-        { new: true }
-      );
-
-      if (!updatedProject) {
-        res.status(404).json({ message: "Project not found" });
-        return;
-      }
-
-      res.status(200).json({
-        message: "Project unliked successfully",
-        likes: updatedProject.likes,
-        project: updatedProject,
-      });
-    } catch (error) {
-      console.error("Error unliking project:", error);
-      res.status(500).json({
-        message: "Error unliking project",
+        message: "Error toggling project like",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
