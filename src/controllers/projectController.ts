@@ -587,21 +587,23 @@ export class ProjectController {
         return;
       }
 
-      const userId = req.user?.id as string;
-      if (project.userId.toString() !== userId) {
-        res.status(403).json({ message: "Access denied to private project" });
-        return;
-      }
+      const userId = req.user?._id as string;
+      // if (project.userId.toString() !== userId) {
+      //   res.status(403).json({ message: "Access denied to private project" });
+      //   return;
+      // }
 
       res.status(200).json({
         message: "Project retrieved successfully",
         project,
+        success: true,
       });
     } catch (error) {
       console.error("Error retrieving project:", error);
       res.status(500).json({
         message: "Error retrieving project",
         error: error instanceof Error ? error.message : "Unknown error",
+        success: false,
       });
     }
   }

@@ -11,7 +11,7 @@ const s3 = new AWS.S3({
   region: process.env.AWS_REGION || "us-east-1",
 });
 
-const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || "your-bucket-name";
+const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
 
 interface ValidationError extends Error {
   errors: Record<string, { message: string }>;
@@ -120,6 +120,12 @@ export class ProfileController {
     const fileName = `${uuidv4()}${fileExtension}`;
     const key = `${folder}/${fileName}`;
 
+    if (!BUCKET_NAME) {
+      throw new Error(
+        "AWS S3 Bucket Name is not defined in environment variables"
+      );
+    }
+
     const uploadParams: AWS.S3.PutObjectRequest = {
       Bucket: BUCKET_NAME,
       Key: key,
@@ -136,6 +142,12 @@ export class ProfileController {
   }
 
   private async deleteFromS3(key: string): Promise<void> {
+    if (!BUCKET_NAME) {
+      throw new Error(
+        "AWS S3 Bucket Name is not defined in environment variables"
+      );
+    }
+
     const deleteParams: AWS.S3.DeleteObjectRequest = {
       Bucket: BUCKET_NAME,
       Key: key,
