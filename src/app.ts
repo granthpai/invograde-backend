@@ -13,17 +13,20 @@ const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
-const allowedOrigins = process.env.FRONTEND_URLS?.split(",") || [];
+const allowedOrigins =
+  process.env.FRONTEND_URLS?.split(",").map((origin) =>
+    origin.trim().replace(/\/+$/, "")
+  ) || [];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
+      const cleanedOrigin = origin.trim().replace(/\/+$/, "");
+      if (allowedOrigins.includes(cleanedOrigin)) {
         callback(null, true);
       } else {
+        console.error("❌ CORS BLOCKED:", origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
