@@ -311,7 +311,6 @@ class AuthController {
         sameSite: "none",
       });
 
-      console.log("safe data", safeUserData);
       res.status(200).json({
         success: true,
         message: "Login SuccessFul!",

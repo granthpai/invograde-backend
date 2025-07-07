@@ -15,12 +15,16 @@ router.post(
 
 router.post(
   "/register",
-  body("email").notEmpty().withMessage("Email is required"),
-  body("username").notEmpty().withMessage("Username is required"),
-  body("password")
-    .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters"),
-  validateRequest,
+  [
+    body("email")
+      .notEmpty()
+      .withMessage("Email is required")
+      .isEmail()
+      .withMessage("Invalid email format"),
+    body("username").notEmpty().withMessage("Username is required"),
+    body("password").notEmpty().withMessage("Password is required"),
+    validateRequest,
+  ],
   authController.register
 );
 
@@ -51,9 +55,15 @@ router.post(
 
 router.post(
   "/login",
-  body("email").notEmpty(),
-  body("password").notEmpty(),
-  validateRequest,
+  [
+    body("email")
+      .notEmpty()
+      .withMessage("Email is required")
+      .isEmail()
+      .withMessage("Invalid email format"),
+    body("password").notEmpty().withMessage("Password is required"),
+    validateRequest,
+  ],
   authController.login
 );
 router.post(

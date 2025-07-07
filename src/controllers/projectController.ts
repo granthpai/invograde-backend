@@ -30,7 +30,6 @@ export class ProjectController {
         githubUrl,
       } = req.body;
 
-      console.log("req b", req.body);
       if (
         !title ||
         !description ||
@@ -484,8 +483,6 @@ export class ProjectController {
         .sort(sortObject)
         .skip(skip)
         .limit(limit);
-
-      console.log("projects", projects);
 
       const totalProjects = await Project.countDocuments(query);
       const totalPages = Math.ceil(totalProjects / limit);
