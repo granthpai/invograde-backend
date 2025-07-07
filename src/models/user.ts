@@ -9,11 +9,8 @@ dotenv.config();
 export interface IUser extends Document {
   username: string;
   email: string;
-  phoneNumber?: string;
-  fullName?: string;
   password: string;
   isEmailVerified: boolean;
-  isPhoneVerified: boolean;
   careerType: string;
   gender?: "Male" | "Female" | "Other" | "Not Set";
   isStudent?: "Yes" | "No" | "Not Set";
@@ -69,49 +66,58 @@ const UserSchema = new Schema<IUser>(
     profilePicture: {
       type: String,
     },
-    education: [
-      {
-        degree: {
-          type: String,
-          required: true,
+    education: {
+      type: [
+        {
+          degree: {
+            type: String,
+            required: true,
+          },
+          fieldOfStudy: {
+            type: String,
+          },
         },
-        fieldOfStudy: {
-          type: String,
+      ],
+      default: [],
+    },
+    workExperience: {
+      type: [
+        {
+          company: {
+            type: String,
+            required: true,
+          },
+          jobTitle: {
+            type: String,
+            required: true,
+          },
         },
-      },
-    ],
-    workExperience: [
-      {
-        company: {
-          type: String,
-          required: true,
+      ],
+      default: [],
+    },
+    certifications: {
+      type: [
+        {
+          name: {
+            type: String,
+            required: true,
+          },
+          expiryMonth: {
+            type: String,
+            required: true,
+          },
+          expiryYear: {
+            type: String,
+            required: true,
+          },
+          doesNotExpire: {
+            type: Boolean,
+            required: true,
+          },
         },
-        jobTitle: {
-          type: String,
-          required: true,
-        },
-      },
-    ],
-    certifications: [
-      {
-        name: {
-          type: String,
-          required: true,
-        },
-        expiryMonth: {
-          type: String,
-          required: true,
-        },
-        expiryYear: {
-          type: String,
-          required: true,
-        },
-        doesNotExpire: {
-          type: Boolean,
-          required: true,
-        },
-      },
-    ],
+      ],
+      default: [],
+    },
     resume: {
       filename: { type: String },
       originalName: { type: String },
@@ -134,33 +140,19 @@ const UserSchema = new Schema<IUser>(
         "Please add a valid email",
       ],
     },
-    phoneNumber: {
-      type: String,
-      unique: true,
-      sparse: true,
-      match: [
-        /^\+[1-9]\d{1,14}$/,
-        "Please add a valid phone number in E.164 format",
-      ],
-    },
     password: {
       type: String,
       required: [true, "Please add a password"],
       minlength: [6, "Password must be at least 6 characters long"],
-      select: false,
     },
     isEmailVerified: {
-      type: Boolean,
-      default: false,
-    },
-    isPhoneVerified: {
       type: Boolean,
       default: false,
     },
     careerType: {
       type: String,
       // enum: ["Developer", "Designer", "Both"],
-      required: [true, "Please select a career type"],
+      // required: [true, "Please select a career type"],
     },
     isStudent: {
       type: String,
@@ -182,15 +174,20 @@ const UserSchema = new Schema<IUser>(
         ref: "Project",
       },
     ],
-    skills: [
-      {
-        name: {
-          type: String,
-          required: true,
+    skills: {
+      type: [
+        {
+          name: {
+            type: String,
+            required: true,
+          },
+          yearsOfExperience: {
+            type: Number,
+          },
         },
-        yearsOfExperience: Number,
-      },
-    ],
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,

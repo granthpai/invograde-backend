@@ -43,62 +43,56 @@ class AuthController {
     }
 
     try {
-      const { emailOrPhone, password, username, career } = req.body;
-      const isEmail = emailOrPhone.includes("@");
-      let userData;
-
-      if (isEmail) {
-        const existingUser = await User.findOne({ email: emailOrPhone });
-        if (existingUser) {
-          res.status(400).json({
-            success: false,
-            message: "User already exists with this email",
-          });
-          return;
-        }
-
-        const verificationCode = generateNumCode();
-
-        const resp = await sendVerificationEmail({
-          user: { email: emailOrPhone },
-          verificationCode,
-        });
-
-        userData = {
-          email: emailOrPhone,
-          password,
-          isEmailVerified: false,
-          isPhoneVerified: false,
-          careerType: career,
-          username,
-        };
-
-        const verificationCodeInstance = await VerificationCode.create({
-          tempUserData: userData,
-          code: verificationCode,
-          type: "email",
-        });
-        console.log("verificationCodeInstance", verificationCodeInstance);
-        const { password: _, ...safeUserData } = userData;
-
-        res.status(201).json({
-          success: true,
-          userData: safeUserData,
-          verificationType: isEmail ? "email" : "phone",
-          message: `Verification code sent to your ${
-            isEmail ? "email" : "phone"
-          }`,
-        });
-      } else {
+      const { email, password, username } = req.body;
+      const isEmail = email.includes("@");
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
         res.status(400).json({
           success: false,
-          message: "Phone registration not implemented yet",
+          message: "User already exists with this email",
         });
+        return;
       }
+
+      const newUser = await User.create({
+        email,
+        password,
+        username,
+      });
+
+      if (!newUser) {
+        res.status(400).json({
+          success: false,
+          message: "User Creation Failed!",
+        });
+        return;
+      }
+
+      const {
+        password: _,
+        __v,
+        createdAt,
+        updatedAt,
+        ...safeUserData
+      } = newUser.toObject();
+
+      const token = newUser.getSignedJwtToken();
+
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      });
+
+      res.status(201).json({
+        success: true,
+        userData: safeUserData,
+        message: "Account Created SuccessFully",
+      });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: "Server error",
+        message: "An error occurred. Please try again.",
         error: (error as Error).message,
       });
     }
@@ -177,62 +171,63 @@ class AuthController {
     }
   }
 
-  async resendVerificationCode(req: Request, res: Response): Promise<void> {
-    try {
-      const { userId, type } = req.body;
-      const user = await User.findById(userId);
+  // commented for now , may be we will need this in future
+  // async resendVerificationCode(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const { userId, type } = req.body;
+  //     const user = await User.findById(userId);
 
-      if (!user) {
-        res.status(404).json({ success: false, message: "User not found" });
-        return;
-      }
+  //     if (!user) {
+  //       res.status(404).json({ success: false, message: "User not found" });
+  //       return;
+  //     }
 
-      await VerificationCode.deleteMany({ user: userId, type });
+  //     await VerificationCode.deleteMany({ user: userId, type });
 
-      const verificationCode = generateNumCode();
-      await VerificationCode.create({
-        user: user._id,
-        code: verificationCode,
-        type,
-      });
+  //     const verificationCode = generateNumCode();
+  //     await VerificationCode.create({
+  //       user: user._id,
+  //       code: verificationCode,
+  //       type,
+  //     });
 
-      if (type === "email") {
-        if (!user.email) {
-          res.status(400).json({
-            success: false,
-            message: "User does not have an email address",
-          });
-          return;
-        }
-        await sendVerificationEmail({
-          user: { email: user.email },
-          verificationCode,
-        });
-      } else if (type === "phone") {
-        if (!user.phoneNumber) {
-          res.status(400).json({
-            success: false,
-            message: "User does not have a phone number",
-          });
-          return;
-        }
-        await sendVerificationSMS(user.phoneNumber, verificationCode);
-      }
+  //     if (type === "email") {
+  //       if (!user.email) {
+  //         res.status(400).json({
+  //           success: false,
+  //           message: "User does not have an email address",
+  //         });
+  //         return;
+  //       }
+  //       await sendVerificationEmail({
+  //         user: { email: user.email },
+  //         verificationCode,
+  //       });
+  //     } else if (type === "phone") {
+  //       if (!user.phoneNumber) {
+  //         res.status(400).json({
+  //           success: false,
+  //           message: "User does not have a phone number",
+  //         });
+  //         return;
+  //       }
+  //       await sendVerificationSMS(user.phoneNumber, verificationCode);
+  //     }
 
-      res.status(200).json({
-        success: true,
-        message: `Verification code resent to your ${
-          type === "email" ? "email" : "phone"
-        }`,
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-        error: (error as Error).message,
-      });
-    }
-  }
+  //     res.status(200).json({
+  //       success: true,
+  //       message: `Verification code resent to your ${
+  //         type === "email" ? "email" : "phone"
+  //       }`,
+  //     });
+  //   } catch (error) {
+  //     res.status(500).json({
+  //       success: false,
+  //       message: "Server error",
+  //       error: (error as Error).message,
+  //     });
+  //   }
+  // }
 
   async completeProfile(req: Request, res: Response): Promise<void> {
     try {
@@ -276,21 +271,13 @@ class AuthController {
 
   async login(req: Request, res: Response): Promise<void> {
     try {
-      const { emailOrPhone, password } = req.body;
+      const { email, password } = req.body;
 
-      const sanitizedInput = emailOrPhone.trim().toLowerCase();
+      console.log("body", req.body);
 
-      let query: any;
+      const user = await User.findOne({ email });
+      console.log("Fetched user:", user);
 
-      if (sanitizedInput.includes("@")) {
-        query = { email: sanitizedInput };
-      } else if (/^\+?[\d\s\-\(\)]+$/.test(emailOrPhone)) {
-        query = { phoneNumber: emailOrPhone };
-      } else {
-        query = { username: emailOrPhone };
-      }
-
-      const user = await User.findOne(query).select("+password");
       if (!user) {
         res.status(401).json({
           success: false,
@@ -308,16 +295,13 @@ class AuthController {
         return;
       }
 
-      if (!user.username || !user.careerType) {
-        res.status(400).json({
-          success: false,
-          message: "Please complete your profile",
-          userId: user._id,
-        });
-        return;
-      }
-
-      const { password: _, ...userWithoutPassword } = user.toObject();
+      const {
+        password: _,
+        __v,
+        createdAt,
+        updatedAt,
+        ...safeUserData
+      } = user.toObject();
 
       const token = user.getSignedJwtToken();
 
@@ -326,16 +310,19 @@ class AuthController {
         secure: true,
         sameSite: "none",
       });
+
+      console.log("safe data", safeUserData);
       res.status(200).json({
         success: true,
+        message: "Login SuccessFul!",
         token,
-        user: userWithoutPassword,
+        user: safeUserData,
       });
     } catch (error) {
       console.error("Login error:", error);
       res.status(500).json({
         success: false,
-        message: "Server error",
+        message: "An error occurred. Please try again.",
         error: (error as Error).message,
       });
     }

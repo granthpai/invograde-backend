@@ -15,7 +15,8 @@ router.post(
 
 router.post(
   "/register",
-  body("emailOrPhone").notEmpty().withMessage("Email or phone is required"),
+  body("email").notEmpty().withMessage("Email is required"),
+  body("username").notEmpty().withMessage("Username is required"),
   body("password")
     .isLength({ min: 6 })
     .withMessage("Password must be at least 6 characters"),
@@ -31,13 +32,13 @@ router.post(
   authController.verifyContact
 );
 
-router.post(
-  "/resend-verification",
-  body("userId").notEmpty(),
-  body("type").isIn(["email", "phone"]),
-  validateRequest,
-  authController.resendVerificationCode
-);
+// router.post(
+//   "/resend-verification",
+//   body("userId").notEmpty(),
+//   body("type").isIn(["email", "phone"]),
+//   validateRequest,
+//   authController.resendVerificationCode
+// );
 
 router.post(
   "/complete-profile",
@@ -50,7 +51,7 @@ router.post(
 
 router.post(
   "/login",
-  body("emailOrPhone").notEmpty(),
+  body("email").notEmpty(),
   body("password").notEmpty(),
   validateRequest,
   authController.login
