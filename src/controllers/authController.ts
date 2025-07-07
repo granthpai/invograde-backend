@@ -273,10 +273,7 @@ class AuthController {
     try {
       const { email, password } = req.body;
 
-      console.log("body", req.body);
-
       const user = await User.findOne({ email });
-      console.log("Fetched user:", user);
 
       if (!user) {
         res.status(401).json({
