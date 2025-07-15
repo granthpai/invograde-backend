@@ -78,18 +78,30 @@ router.post(
 router.get("/me", protect, authController.getMe);
 
 router.post(
-  "/forgot-password",
-  body("email").isEmail(),
-  validateRequest,
-  authController.forgotPassword
-);
+    "/forgot-password",
+    body("email").isEmail(),
+    validateRequest,
+    authController.forgotPassword
+  );
 
 router.post(
-  "/reset-password",
-  body("token").notEmpty(),
-  body("newPassword").isLength({ min: 6 }),
-  validateRequest,
-  authController.resetPassword
+    "/reset-password",
+    body("token").notEmpty(),
+    body("newPassword").isLength({ min: 6 }),
+    validateRequest,
+    authController.resetPassword
+  );
+
+router.post('/forgot-password',
+   body("email").isEmail(),
+   validateRequest,
+   authController.forgotPassword
+);
+router.post('/reset-password',
+   body("token").notEmpty(),
+   body("newPassword").isLength({ min: 6 }),
+   validateRequest,
+   authController.resetPassword
 );
 
 router.post("/logout", protect, authController.logout);

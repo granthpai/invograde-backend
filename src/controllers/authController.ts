@@ -8,6 +8,9 @@ import { sendVerificationSMS } from "../config/sms";
 import { generateNumCode } from "../utils/generateVerificationCode";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { emailSchema, resetPasswordSchema } from "../utils/validation";
+import { generateSecureToken, hashToken } from '../utils/crypto';
+
 class AuthController {
   async checkExists(req: Request, res: Response): Promise<void> {
     try {
@@ -171,7 +174,7 @@ class AuthController {
     }
   }
 
-  // commented for now , may be we will need this in future
+  // commented for now may be we will need this in future
   // async resendVerificationCode(req: Request, res: Response): Promise<void> {
   //   try {
   //     const { userId, type } = req.body;
@@ -339,70 +342,116 @@ class AuthController {
 
   async forgotPassword(req: Request, res: Response): Promise<void> {
     try {
-      const { email } = req.body;
-      const user = await User.findOne({ email });
-
-      if (!user) {
-        res.status(404).json({
+      const validation = emailSchema.safeParse(req.body);
+      if (!validation.success) {
+        res.status(400).json({
           success: false,
-          message: "No account found with this email",
+          message: 'Invalid email format',
+          errors: validation.error.issues
         });
         return;
       }
-
-      const resetToken = generateNumCode();
-      user.resetPasswordToken = resetToken;
-      user.resetPasswordExpires = new Date(Date.now() + 3600000);
-      await user.save();
-
-      await sendPasswordResetEmail(email, resetToken);
-
-      res.status(200).json({
+  
+      const { email } = validation.data;
+  
+      const user = await User.findOne({ email });
+  
+      const secureResponse = {
         success: true,
-        message: "Password reset instructions sent to your email",
-      });
+        message: "If this email is registered, you'll receive a reset link."
+      };
+  
+      if (!user) {
+        res.status(200).json(secureResponse);
+        return;
+      }
+  
+      const rawToken = generateSecureToken();
+      const hashedToken = hashToken(rawToken);
+  
+      const expiryTime = new Date(Date.now() + 15 * 60 * 1000);
+  
+      user.resetPasswordToken = hashedToken;
+      user.resetPasswordExpires = expiryTime;
+      await user.save();
+  
+      try {
+        await sendPasswordResetEmail(user.email, user.username, rawToken);
+      } catch (emailError) {
+        console.error('Email sending failed:', emailError);
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+        
+        res.status(500).json({
+          success: false,
+          message: 'Failed to send reset email. Please try again.'
+        });
+        return;
+      }
+  
+      res.status(200).json(secureResponse);
     } catch (error) {
-      console.error("Forgot password error:", error);
+      console.error('Forgot password error:', error);
       res.status(500).json({
         success: false,
-        message: "An error occurred while processing your request",
+        message: 'An error occurred while processing your request'
       });
     }
-  }
-
+  };
+  
   async resetPassword(req: Request, res: Response): Promise<void> {
     try {
-      const { token, newPassword } = req.body;
-      const user = await User.findOne({
-        resetPasswordToken: token,
-        resetPasswordExpires: { $gt: Date.now() },
-      });
-
+      const validation = resetPasswordSchema.safeParse(req.body);
+      if (!validation.success) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid request data',
+          errors: validation.error.issues
+        });
+        return;
+      }
+  
+      const { token, email, newPassword } = validation.data;
+  
+      const hashedToken = hashToken(token);
+  
+      const user = await User.findOne({ email });
+  
       if (!user) {
         res.status(400).json({
           success: false,
-          message: "Password reset token is invalid or has expired",
+          message: 'Password reset token is invalid or has expired'
         });
         return;
       }
-
+  
+      if (user.resetPasswordToken !== hashedToken || !user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
+        res.status(400).json({
+          success: false,
+          message: 'Password reset token is invalid or has expired'
+        });
+        return;
+      }
+  
       user.password = newPassword;
       user.resetPasswordToken = undefined;
       user.resetPasswordExpires = undefined;
       await user.save();
-
+  
       res.status(200).json({
         success: true,
-        message: "Your password has been updated successfully",
+        message: 'Your password has been updated successfully'
       });
     } catch (error) {
-      console.error("Reset password error:", error);
+      console.error('Reset password error:', error);
       res.status(500).json({
         success: false,
-        message: "An error occurred while resetting your password",
+        message: 'An error occurred while resetting your password'
       });
     }
-  }
+  };
+  
 
   async logout(req: Request, res: Response): Promise<void> {
     try {

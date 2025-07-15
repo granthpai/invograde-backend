@@ -62,59 +62,94 @@ export const sendVerificationEmail = async (
   }
 };
 
-export const sendPasswordResetEmail = async (
-  to: string,
-  resetToken: string
-) => {
-  try {
-    console.log("Sending password reset email to:", to);
 
+export const sendPasswordResetEmail = async (email: string, username: string, rawToken: string): Promise<void> => {
+  try {
+    const resetUrl = `https://www.invograde.com/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`;
+    
     const mailOptions = {
-      from: process.env.SMTP_USER || "youremail@gmail.com",
-      to,
-      subject: "Reset your password",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #333;">Password Reset</h2>
-          <p style="font-size: 16px; color: #666;">Click the link below to reset your password:</p>
-          <p style="font-size: 16px; color: #666; margin: 20px 0; text-align: center;">
-            <a href="${
-              process.env.FRONTEND_URL || "http://localhost:3000"
-            }/reset-password/${resetToken}" 
-               style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">
-              Reset Password
-            </a>
-          </p>
-          <p style="font-size: 16px; color: #666;">This link will expire in 30 minutes.</p>
-          <p style="font-size: 16px; color: #666;">If you didn't request this password reset, please ignore this email.</p>
-          <p style="font-size: 16px; color: #666;">Thanks,<br>The Team</p>
-        </div>
-      `,
-      text: `Password Reset Request
-        
-        Click the link below to reset your password:
-        
-        ${
-          process.env.FRONTEND_URL || "http://localhost:3000"
-        }/reset-password/${resetToken}
-        
-        This link will expire in 30 minutes.
-        
-        If you didn't request this password reset, please ignore this email.
-        
-        Thanks,
-        The Team`,
+      from: `"Invograde Support" <${process.env.FROM_EMAIL}>`,
+      to: email,
+      subject: 'Reset Your Password - Invograde',
+      html: getPasswordResetEmailTemplate(username, resetUrl),
+      text: getPasswordResetEmailText(username, resetUrl)
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Password reset email sent successfully!");
-    console.log("Message ID:", info.messageId);
-
-    return info;
+    await transporter.sendMail(mailOptions);
+    console.log(`Password reset email sent to: ${email}`);
   } catch (error) {
-    console.error("Error sending password reset email:", error);
-    throw new Error("Failed to send password reset email");
+    console.error('Error sending password reset email:', error);
+    throw new Error('Failed to send password reset email');
   }
+};
+
+const getPasswordResetEmailTemplate = (username: string, resetUrl: string): string => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Reset Your Password</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        .button { display: inline-block; background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+        .warning { background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px; margin: 20px 0; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Reset Your Password</h1>
+        </div>
+        
+        <p>Hi ${username},</p>
+        
+        <p>We received a request to reset your password for your Invograde account.</p>
+        
+        <p>Click the link below to reset your password:</p>
+        
+        <p style="text-align: center;">
+          <a href="${resetUrl}" class="button">Reset Password</a>
+        </p>
+        
+        <p>Or copy and paste this link into your browser:</p>
+        <p style="word-break: break-all;"><a href="${resetUrl}">${resetUrl}</a></p>
+        
+        <div class="warning">
+          <p><strong>This link is valid for the next 15 minutes.</strong></p>
+          <p>If you didn't request this, you can safely ignore this email.</p>
+        </div>
+        
+        <div class="footer">
+          <p>Thanks,<br>The Invograde Team</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+const getPasswordResetEmailText = (username: string, resetUrl: string): string => {
+  return `
+Reset Your Password - Invograde
+
+Hi ${username},
+
+We received a request to reset your password for your Invograde account.
+
+Click the link below to reset your password:
+${resetUrl}
+
+This link is valid for the next 15 minutes.
+
+If you didn't request this, you can safely ignore this email.
+
+Thanks,
+The Invograde Team
+  `;
 };
 
 export default transporter;
