@@ -62,28 +62,38 @@ export const sendVerificationEmail = async (
   }
 };
 
-
-export const sendPasswordResetEmail = async (email: string, username: string, rawToken: string): Promise<void> => {
+export const sendPasswordResetEmail = async (
+  email: string,
+  username: string,
+  rawToken: string
+): Promise<void> => {
   try {
-    const resetUrl = `https://www.invograde.com/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`;
-    
+    console.log(process.env.BASE_URL);
+
+    const resetUrl = `${
+      process.env.BASE_URL
+    }/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`;
+
     const mailOptions = {
       from: `"Invograde Support" <${process.env.FROM_EMAIL}>`,
       to: email,
-      subject: 'Reset Your Password - Invograde',
+      subject: "Reset Your Password - Invograde",
       html: getPasswordResetEmailTemplate(username, resetUrl),
-      text: getPasswordResetEmailText(username, resetUrl)
+      text: getPasswordResetEmailText(username, resetUrl),
     };
 
     await transporter.sendMail(mailOptions);
     console.log(`Password reset email sent to: ${email}`);
   } catch (error) {
-    console.error('Error sending password reset email:', error);
-    throw new Error('Failed to send password reset email');
+    console.error("Error sending password reset email:", error);
+    throw new Error("Failed to send password reset email");
   }
 };
 
-const getPasswordResetEmailTemplate = (username: string, resetUrl: string): string => {
+const getPasswordResetEmailTemplate = (
+  username: string,
+  resetUrl: string
+): string => {
   return `
     <!DOCTYPE html>
     <html>
@@ -132,7 +142,10 @@ const getPasswordResetEmailTemplate = (username: string, resetUrl: string): stri
   `;
 };
 
-const getPasswordResetEmailText = (username: string, resetUrl: string): string => {
+const getPasswordResetEmailText = (
+  username: string,
+  resetUrl: string
+): string => {
   return `
 Reset Your Password - Invograde
 
